@@ -1,0 +1,9 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backend workspace for Stay-Go",
+  "scripts": {
+    "start": "node index.js"
+  }
+}
