@@ -1,13 +1,6 @@
 import Footer from './footer'
 import Header from './header'
 
-const pageLinks = [
-  { label: 'Privacy', screen: 'privacy' },
-  { label: 'Terms', screen: 'terms' },
-  { label: 'Support', screen: 'support' },
-  { label: 'Contact', screen: 'contact' },
-]
-
 function InfoPage({
   id,
   eyebrow,
@@ -17,21 +10,11 @@ function InfoPage({
   details,
   asideTitle,
   asideItems,
+  headerNavItems,
   onNavigateHome,
   onNavigateToRide,
   onNavigateToPage,
 }) {
-  const navItems = [
-    { label: 'Home', type: 'button', onClick: onNavigateHome },
-    { label: 'Rides', type: 'button', onClick: onNavigateToRide },
-    ...pageLinks.map((link) => ({
-      label: link.label,
-      type: 'button',
-      active: link.screen === id,
-      onClick: () => onNavigateToPage(link.screen),
-    })),
-  ]
-
   const actionItems = [
     { label: 'Back to Home', type: 'button', variant: 'button-ghost', onClick: onNavigateHome },
     {
@@ -45,7 +28,7 @@ function InfoPage({
   return (
     <div className="info-page">
       <Header
-        navItems={navItems}
+        navItems={headerNavItems}
         actionItems={actionItems}
         onBrandClick={onNavigateHome}
         navAriaLabel="Policy navigation"

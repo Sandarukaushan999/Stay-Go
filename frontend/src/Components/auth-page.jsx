@@ -30,19 +30,8 @@ const authSignals = [
   'Unified access for rides, matching, and maintenance',
 ]
 
-function AuthPage({ mode, onNavigateHome, onNavigateToRide, onNavigateToPage, onNavigateToAuth }) {
+function AuthPage({ mode, headerNavItems, onNavigateHome, onNavigateToRide, onNavigateToPage, onNavigateToAuth }) {
   const content = authContent[mode]
-  const navItems = [
-    { label: 'Home', type: 'button', onClick: onNavigateHome },
-    { label: 'Rides', type: 'button', onClick: onNavigateToRide },
-    { label: 'Login', type: 'button', active: mode === 'login', onClick: () => onNavigateToAuth('login') },
-    {
-      label: 'Register',
-      type: 'button',
-      active: mode === 'register',
-      onClick: () => onNavigateToAuth('register'),
-    },
-  ]
 
   const actionItems = [
     { label: 'Need Help', type: 'button', variant: 'button-ghost', onClick: () => onNavigateToPage('support') },
@@ -57,7 +46,7 @@ function AuthPage({ mode, onNavigateHome, onNavigateToRide, onNavigateToPage, on
   return (
     <div className="auth-page">
       <Header
-        navItems={navItems}
+        navItems={headerNavItems}
         actionItems={actionItems}
         onBrandClick={onNavigateHome}
         navAriaLabel="Authentication navigation"

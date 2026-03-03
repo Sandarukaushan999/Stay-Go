@@ -26,6 +26,16 @@ const screenToHash = {
   register: '#register',
 }
 
+function buildPrimaryNavItems(navigateTo) {
+  return [
+    { label: 'Home', type: 'link', href: '#home' },
+    { label: 'Roommates', type: 'link', href: '#roommates' },
+    { label: 'Rides', type: 'button', onClick: () => navigateTo('ride') },
+    { label: 'Maintenance', type: 'link', href: '#maintenance' },
+    { label: 'Dashboard', type: 'link', href: '#dashboard' },
+  ]
+}
+
 const pageCatalog = {
   privacy: {
     id: 'privacy',
@@ -195,9 +205,12 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const primaryNavItems = buildPrimaryNavItems(navigateTo)
+
   if (screen === 'ride') {
     return (
       <RideSharing
+        headerNavItems={primaryNavItems}
         onNavigateHome={() => navigateTo('home')}
         onNavigateToPage={navigateTo}
       />
@@ -208,6 +221,7 @@ function App() {
     return (
       <InfoPage
         {...pageCatalog[screen]}
+        headerNavItems={primaryNavItems}
         onNavigateHome={() => navigateTo('home')}
         onNavigateToRide={() => navigateTo('ride')}
         onNavigateToPage={navigateTo}
@@ -219,6 +233,7 @@ function App() {
     return (
       <AuthPage
         mode={screen}
+        headerNavItems={primaryNavItems}
         onNavigateHome={() => navigateTo('home')}
         onNavigateToRide={() => navigateTo('ride')}
         onNavigateToPage={navigateTo}
@@ -229,6 +244,7 @@ function App() {
 
   return (
     <Home
+      headerNavItems={primaryNavItems}
       onNavigateToRide={() => navigateTo('ride')}
       onNavigateToPage={navigateTo}
       onNavigateToAuth={navigateTo}

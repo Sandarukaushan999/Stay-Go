@@ -28,14 +28,7 @@ const upcomingRides = [
   { route: 'Engineering Faculty to Hostel C', time: '06:40 PM', seats: '4 seats left', status: 'Open for booking' },
 ]
 
-function RideSharing({ onNavigateHome, onNavigateToPage }) {
-  const navItems = [
-    { label: 'Home', type: 'button', onClick: onNavigateHome },
-    { label: 'Overview', type: 'link', href: '#ride-overview' },
-    { label: 'Ride Board', type: 'link', href: '#ride-board' },
-    { label: 'Support', type: 'button', onClick: () => onNavigateToPage('support') },
-  ]
-
+function RideSharing({ headerNavItems, onNavigateHome, onNavigateToPage }) {
   const actionItems = [
     { label: 'Back to Home', type: 'button', variant: 'button-ghost', onClick: onNavigateHome },
     { label: 'Offer Ride', type: 'button', variant: 'button-primary', onClick: () => {} },
@@ -44,7 +37,7 @@ function RideSharing({ onNavigateHome, onNavigateToPage }) {
   return (
     <div className="ride-page">
       <Header
-        navItems={navItems}
+        navItems={headerNavItems}
         actionItems={actionItems}
         onBrandClick={onNavigateHome}
         navAriaLabel="Ride navigation"

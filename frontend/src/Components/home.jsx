@@ -165,15 +165,7 @@ function SectionHeading({ eyebrow, title, description, center = false }) {
   )
 }
 
-function Home({ onNavigateToRide, onNavigateToPage, onNavigateToAuth }) {
-  const navItems = [
-    { label: 'Home', type: 'link', href: '#home' },
-    { label: 'Roommates', type: 'link', href: '#roommates' },
-    { label: 'Rides', type: 'button', onClick: onNavigateToRide },
-    { label: 'Maintenance', type: 'link', href: '#maintenance' },
-    { label: 'Dashboard', type: 'link', href: '#dashboard' },
-  ]
-
+function Home({ headerNavItems, onNavigateToRide, onNavigateToPage, onNavigateToAuth }) {
   const actionItems = [
     { label: 'Login', type: 'button', variant: 'button-ghost', onClick: () => onNavigateToAuth('login') },
     {
@@ -186,7 +178,7 @@ function Home({ onNavigateToRide, onNavigateToPage, onNavigateToAuth }) {
 
   return (
     <div className="home-page">
-      <Header navItems={navItems} actionItems={actionItems} />
+      <Header navItems={headerNavItems} actionItems={actionItems} />
 
       <main className="home-shell">
         <section className="hero-section" id="home">

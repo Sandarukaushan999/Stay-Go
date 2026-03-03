@@ -27,6 +27,10 @@
   --radius-lg: 28px;
   --radius-md: 22px;
   --radius-sm: 16px;
+  --app-surface:
+    radial-gradient(circle at top left, rgba(226, 255, 153, 0.8), transparent 24%),
+    radial-gradient(circle at top right, rgba(135, 109, 255, 0.12), transparent 22%),
+    linear-gradient(180deg, #f9fbf5 0%, #ffffff 42%, #f4f7ef 100%);
 }
 
 *,
@@ -43,10 +47,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(226, 255, 153, 0.8), transparent 24%),
-    radial-gradient(circle at top right, rgba(135, 109, 255, 0.12), transparent 22%),
-    linear-gradient(180deg, #f9fbf5 0%, #ffffff 42%, #f4f7ef 100%);
+  background: var(--app-surface);
   color: var(--color-text);
 }
 
@@ -129,10 +130,29 @@ a {
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 40;
+  padding-top: 12px;
   backdrop-filter: blur(18px);
-  background: rgba(255, 255, 255, 0.8);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.75);
+  background:
+    radial-gradient(circle at top left, rgba(226, 255, 153, 0.66), transparent 24%),
+    radial-gradient(circle at top right, rgba(135, 109, 255, 0.1), transparent 22%),
+    linear-gradient(180deg, rgba(249, 251, 245, 0.94) 0%, rgba(255, 255, 255, 0.88) 100%);
+  border-bottom: 1px solid rgba(16, 19, 18, 0.05);
+  box-shadow:
+    0 12px 28px rgba(16, 19, 18, 0.06),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.42);
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    padding 220ms ease;
+}
+
+.topbar.is-scrolled {
+  padding-top: 10px;
+  background: transparent;
+  border-bottom-color: transparent;
+  box-shadow: none;
 }
 
 .topbar-inner,
@@ -149,21 +169,35 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 18px 0;
+  gap: 16px;
+  padding: 16px 0 18px;
+  transition: padding 220ms ease;
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 14px;
+  min-width: 250px;
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease,
+    width 220ms ease,
+    margin 220ms ease;
+}
+
+.brand-logo-frame {
+  display: block;
+  width: 250px;
+  height: 48px;
+  overflow: hidden;
 }
 
 .brand-logo {
   display: block;
-  width: auto;
-  height: 84px;
-  object-fit: contain;
+  width: 390px;
+  max-width: none;
+  height: auto;
+  transform: translate(-4px, -8px);
 }
 
 .brand-copy {
@@ -186,12 +220,65 @@ a {
 .topbar-nav {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 6px;
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  z-index: 90;
+  isolation: isolate;
+  overflow: hidden;
+  width: max-content;
+  max-width: min(calc(100% - 24px), 820px);
+  padding: 7px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.64);
-  border: 1px solid rgba(16, 19, 18, 0.05);
-  box-shadow: var(--shadow-soft);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05));
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 24px 60px rgba(16, 19, 18, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(26px) saturate(180%) contrast(1.06);
+  -webkit-backdrop-filter: blur(26px) saturate(180%) contrast(1.06);
+  transform: translateX(-50%);
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease;
+}
+
+.topbar-nav::before,
+.topbar-nav::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.topbar-nav::before {
+  inset: 1px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.03) 46%, rgba(255, 255, 255, 0.09) 100%),
+    radial-gradient(circle at 18% 22%, rgba(226, 255, 153, 0.22), transparent 22%),
+    radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.18), transparent 18%);
+  opacity: 0.95;
+  z-index: -2;
+}
+
+.topbar-nav::after {
+  inset: 2px;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 24%, transparent 44%),
+    radial-gradient(circle at 50% 160%, rgba(16, 19, 18, 0.16), transparent 36%);
+  mix-blend-mode: screen;
+  opacity: 0.8;
+  z-index: -1;
+}
+
+.topbar.is-scrolled .topbar-nav {
+  top: 12px;
 }
 
 .nav-link,
@@ -215,23 +302,70 @@ a {
   justify-content: center;
   padding: 10px 14px;
   border-radius: 999px;
-  color: var(--color-muted);
+  color: rgba(16, 19, 18, 0.82);
   font-weight: 700;
   font-size: 0.92rem;
   white-space: nowrap;
   cursor: pointer;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .nav-link:hover,
 .nav-link.is-active {
-  background: rgba(186, 249, 26, 0.22);
-  color: var(--color-text);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08)),
+    linear-gradient(135deg, rgba(186, 249, 26, 0.12), rgba(226, 255, 153, 0.06));
+  color: #0f1412;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.24),
+    0 10px 22px rgba(16, 19, 18, 0.08);
 }
 
 .topbar-actions {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease,
+    width 220ms ease,
+    margin 220ms ease;
+}
+
+.topbar.is-scrolled .brand,
+.topbar.is-scrolled .topbar-actions {
+  width: 0;
+  margin: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateY(-10px);
+}
+
+.topbar .button-ghost {
+  background: rgba(16, 19, 18, 0.06);
+  color: rgba(16, 19, 18, 0.82);
+  border-color: rgba(16, 19, 18, 0.1);
+}
+
+.topbar .button-ghost:hover {
+  border-color: rgba(186, 249, 26, 0.34);
+  box-shadow: 0 0 0 6px rgba(186, 249, 26, 0.1);
+}
+
+.topbar .button-primary {
+  background: linear-gradient(135deg, var(--color-accent), #9fd21c);
+  color: var(--color-secondary);
+  box-shadow: 0 18px 34px rgba(186, 249, 26, 0.2);
+}
+
+.topbar .button-primary:hover {
+  box-shadow: 0 22px 40px rgba(186, 249, 26, 0.24);
+}
+
+.topbar .button {
+  min-height: 46px;
+  padding: 0 20px;
 }
 
 .button {
@@ -1614,8 +1748,7 @@ a {
   }
 
   .topbar-nav {
-    order: 3;
-    width: 100%;
+    width: min(calc(100% - 20px), 760px);
     justify-content: flex-start;
     overflow-x: auto;
     scrollbar-width: none;
@@ -1736,20 +1869,30 @@ a {
   }
 
   .topbar-inner {
-    padding: 14px 0;
+    padding: 12px 0 16px;
   }
 
   .topbar-nav {
-    width: calc(100% + 2px);
-    margin-left: -1px;
+    top: 12px;
+    width: min(calc(100% - 10px), 760px);
   }
 
   .brand-copy small {
     display: none;
   }
 
+  .brand {
+    min-width: 200px;
+  }
+
+  .brand-logo-frame {
+    width: 200px;
+    height: 38px;
+  }
+
   .brand-logo {
-    height: 68px;
+    width: 310px;
+    transform: translate(-4px, -6px);
   }
 
   .footer-logo {
