@@ -1,7 +1,29 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
 build/
-.DS_Store
-Thumbs.db
+
+# Environment variables
 .env
 .env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Editor
+.vscode/
+.idea/
+
+
+.claude/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Uploads
+backend/uploads/
