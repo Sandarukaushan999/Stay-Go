@@ -67,7 +67,7 @@ function TicketDetail({ ticket, currentUser, onRate, onBack }) {
     && currentUser
     && currentUser.role === 'student'
     && ticket.submittedBy
-    && currentUser.id === ticket.submittedBy.id
+    && (currentUser.id || currentUser._id) === (ticket.submittedBy.id || ticket.submittedBy._id)
     && !isRatingSubmitted
 
   // ---- HANDLE RATING SUBMISSION ----

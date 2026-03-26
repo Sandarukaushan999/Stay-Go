@@ -319,7 +319,7 @@ function AdminTickets({ tickets, technicians, onViewTicket, onAssign, onReject }
               >
                 <option value="">Choose a technician...</option>
                 {technicians.map((tech) => (
-                  <option key={tech.id} value={tech.id}>
+                  <option key={tech.id || tech._id} value={tech.id || tech._id}>
                     {tech.name} ({tech.email})
                   </option>
                 ))}

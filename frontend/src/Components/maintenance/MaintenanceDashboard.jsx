@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Header from '../header'
 import Footer from '../footer'
 import SubmitComplaint from './SubmitComplaint'
@@ -9,33 +9,105 @@ import AdminTickets from './AdminTickets'
 import MaintenanceAnalytics from './MaintenanceAnalytics'
 import Announcements from './Announcements'
 import DownloadReports from './DownloadReports'
-import { mockTickets, mockAnnouncements, mockTechnicians, mockUsers } from './mockData'
+import * as api from './api'
 import './maintenance.css'
 
 // ============================================
 // MaintenanceDashboard - Main entry point for the maintenance module
-// Premium hero section + role-based sub-navigation + screen routing
-// Matches the team lead's design language (dark cards, glassmorphism, gradients)
+// NOW CONNECTED TO REAL BACKEND API (MongoDB Atlas)
+// Uses api.js for all backend calls
+// Role switcher auto-logs in as different test users for demo
 // ============================================
 
+// Test login credentials for each role
+const TEST_ACCOUNTS = {
+  student: { email: 'kasun@university.edu', password: 'password123' },
+  staff: { email: 'nimal@university.edu', password: 'password123' },
+  admin: { email: 'sarah@university.edu', password: 'password123' },
+}
+
 function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage }) {
-  // ---- STATE MANAGEMENT ----
+  // ---- STATE ----
   const [activeScreen, setActiveScreen] = useState('my-tickets')
-  const [tickets, setTickets] = useState(mockTickets)
-  const [announcements, setAnnouncements] = useState(mockAnnouncements)
+  const [tickets, setTickets] = useState([])
+  const [announcements, setAnnouncements] = useState([])
+  const [technicians, setTechnicians] = useState([])
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [currentRole, setCurrentRole] = useState('student')
+  const [currentUser, setCurrentUser] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  // Get current user based on selected role
-  const currentUser = currentRole === 'admin'
-    ? mockUsers.admin
-    : currentRole === 'staff'
-      ? mockUsers.technician1
-      : mockUsers.student
+  // ---- AUTO LOGIN ----
+  // When role changes, login as that role's test user
+  const loginAsRole = useCallback(async (role) => {
+    try {
+      setIsLoading(true)
+      setError(null)
 
-  // ---- NAVIGATION HELPERS ----
+      // Login with test account for this role
+      const account = TEST_ACCOUNTS[role]
+      const data = await api.login(account.email, account.password)
+      setCurrentUser(data.user)
 
-  // Scroll to the content area (below hero and controls), not the top of the page
+      // Load data based on role
+      await loadData(role)
+    } catch (err) {
+      console.error('Login failed:', err.message)
+      setError('Could not connect to backend. Showing mock data.')
+      // Fall back to mock data if API fails
+      loadMockData()
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  // ---- LOAD DATA FROM API based on role ----
+  async function loadData(role) {
+    try {
+      // Load announcements for all roles
+      const annData = role === 'admin'
+        ? await api.getAllAnnouncements()
+        : await api.getActiveAnnouncements()
+      setAnnouncements(annData)
+
+      // Load tickets based on role
+      if (role === 'student') {
+        const ticketData = await api.getMyTickets()
+        setTickets(ticketData)
+      } else if (role === 'staff') {
+        const ticketData = await api.getAssignedTickets()
+        setTickets(ticketData)
+      } else if (role === 'admin') {
+        const ticketData = await api.getAllTickets()
+        setTickets(ticketData)
+        // Also load technicians list for admin
+        const techData = await api.getTechnicians()
+        setTechnicians(techData)
+      }
+    } catch (err) {
+      console.error('Load data failed:', err.message)
+      setError('Could not load data from server.')
+    }
+  }
+
+  // ---- MOCK DATA FALLBACK ----
+  // If backend is not running, use mock data so UI still works
+  function loadMockData() {
+    const { mockTickets, mockAnnouncements, mockTechnicians, mockUsers } = require('./mockData')
+    setTickets(mockTickets)
+    setAnnouncements(mockAnnouncements)
+    setTechnicians(mockTechnicians)
+    setCurrentUser(mockUsers.student)
+  }
+
+  // ---- INITIAL LOAD ----
+  // Login as student when page first loads
+  useEffect(() => {
+    loginAsRole('student')
+  }, [loginAsRole])
+
+  // ---- NAVIGATION ----
   function scrollToContent() {
     const controls = document.querySelector('.maint-sticky-bar')
     if (controls) {
@@ -56,150 +128,133 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
     scrollToContent()
   }
 
-  // ---- TICKET ACTIONS ----
+  // ---- ROLE SWITCH ----
+  // When user clicks a role button, login as that role and load data
+  async function switchRole(role) {
+    setCurrentRole(role)
+    await loginAsRole(role)
+
+    // Navigate to default screen for that role
+    if (role === 'student') setActiveScreen('my-tickets')
+    else if (role === 'staff') setActiveScreen('tasks')
+    else if (role === 'admin') setActiveScreen('admin-tickets')
+  }
+
+  // ---- TICKET ACTIONS (real API calls) ----
 
   // Student submits a new ticket
-  function handleSubmitTicket(formData) {
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
-    const count = tickets.length + 1
-    const ticketId = `MT-${today}-${String(count).padStart(3, '0')}`
-
-    const newTicket = {
-      _id: String(Date.now()),
-      ticketId,
-      ...formData,
-      status: 'submitted',
-      submittedBy: currentUser,
-      assignedTo: null,
-      rejectionReason: null,
-      resolutionNote: null,
-      rating: null,
-      ratingFeedback: null,
-      attachments: [],
-      statusHistory: [{
-        status: 'submitted',
-        changedBy: currentUser,
-        changedAt: new Date().toISOString(),
-        note: 'Ticket submitted by student',
-      }],
-      createdAt: new Date().toISOString(),
+  async function handleSubmitTicket(formData) {
+    try {
+      setIsLoading(true)
+      await api.createTicket(formData)
+      // Reload tickets after creating
+      const ticketData = await api.getMyTickets()
+      setTickets(ticketData)
+      goToScreen('my-tickets')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setIsLoading(false)
     }
-
-    setTickets([newTicket, ...tickets])
-    goToScreen('my-tickets')
   }
 
   // Admin assigns a technician
-  function handleAssignTicket(ticketId, technicianId) {
-    const technician = mockTechnicians.find((t) => t.id === technicianId)
-    setTickets(tickets.map((ticket) => {
-      if (ticket._id === ticketId) {
-        return {
-          ...ticket,
-          status: 'assigned',
-          assignedTo: technician,
-          statusHistory: [...ticket.statusHistory, {
-            status: 'assigned', changedBy: currentUser,
-            changedAt: new Date().toISOString(), note: 'Technician assigned by admin',
-          }],
-        }
-      }
-      return ticket
-    }))
+  async function handleAssignTicket(ticketId, technicianId) {
+    try {
+      await api.assignTicket(ticketId, technicianId)
+      // Reload all tickets
+      const ticketData = await api.getAllTickets()
+      setTickets(ticketData)
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   // Admin rejects a ticket
-  function handleRejectTicket(ticketId, reason) {
-    setTickets(tickets.map((ticket) => {
-      if (ticket._id === ticketId) {
-        return {
-          ...ticket,
-          status: 'rejected',
-          rejectionReason: reason,
-          statusHistory: [...ticket.statusHistory, {
-            status: 'rejected', changedBy: currentUser,
-            changedAt: new Date().toISOString(), note: reason,
-          }],
-        }
-      }
-      return ticket
-    }))
+  async function handleRejectTicket(ticketId, reason) {
+    try {
+      await api.rejectTicket(ticketId, reason)
+      const ticketData = await api.getAllTickets()
+      setTickets(ticketData)
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   // Technician starts working
-  function handleStartTicket(ticketId) {
-    setTickets(tickets.map((ticket) => {
-      if (ticket._id === ticketId) {
-        return {
-          ...ticket,
-          status: 'in_progress',
-          statusHistory: [...ticket.statusHistory, {
-            status: 'in_progress', changedBy: currentUser,
-            changedAt: new Date().toISOString(), note: 'Technician started working on the issue',
-          }],
-        }
-      }
-      return ticket
-    }))
+  async function handleStartTicket(ticketId) {
+    try {
+      await api.startTicket(ticketId)
+      const ticketData = await api.getAssignedTickets()
+      setTickets(ticketData)
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   // Technician resolves
-  function handleResolveTicket(ticketId, resolutionNote) {
-    setTickets(tickets.map((ticket) => {
-      if (ticket._id === ticketId) {
-        return {
-          ...ticket,
-          status: 'resolved',
-          resolutionNote,
-          statusHistory: [...ticket.statusHistory, {
-            status: 'resolved', changedBy: currentUser,
-            changedAt: new Date().toISOString(), note: resolutionNote,
-          }],
-        }
-      }
-      return ticket
-    }))
+  async function handleResolveTicket(ticketId, resolutionNote) {
+    try {
+      await api.resolveTicket(ticketId, resolutionNote)
+      const ticketData = await api.getAssignedTickets()
+      setTickets(ticketData)
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   // Student rates
-  function handleRateTicket(ticketId, rating, ratingFeedback) {
-    setTickets(tickets.map((ticket) => {
-      if (ticket._id === ticketId) {
-        return {
-          ...ticket,
-          status: 'closed',
-          rating,
-          ratingFeedback,
-          statusHistory: [...ticket.statusHistory, {
-            status: 'closed', changedBy: currentUser,
-            changedAt: new Date().toISOString(),
-            note: `Student rated ${rating}/5${ratingFeedback ? ': ' + ratingFeedback : ''}`,
-          }],
-        }
-      }
-      return ticket
-    }))
-  }
-
-  // ---- ANNOUNCEMENT ACTIONS ----
-  function handleCreateAnnouncement(data) {
-    const newAnnouncement = {
-      _id: String(Date.now()), ...data, isActive: true,
-      createdBy: currentUser, createdAt: new Date().toISOString(),
+  async function handleRateTicket(ticketId, rating, ratingFeedback) {
+    try {
+      await api.rateTicket(ticketId, rating, ratingFeedback)
+      const ticketData = await api.getMyTickets()
+      setTickets(ticketData)
+      goToScreen('my-tickets')
+    } catch (err) {
+      setError(err.message)
     }
-    setAnnouncements([newAnnouncement, ...announcements])
   }
 
-  function handleUpdateAnnouncement(id, data) {
-    setAnnouncements(announcements.map((a) => a._id === id ? { ...a, ...data } : a))
+  // ---- ANNOUNCEMENT ACTIONS (real API calls) ----
+
+  async function handleCreateAnnouncement(data) {
+    try {
+      await api.createAnnouncement(data)
+      const annData = await api.getAllAnnouncements()
+      setAnnouncements(annData)
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
-  function handleDeleteAnnouncement(id) {
-    setAnnouncements(announcements.filter((a) => a._id !== id))
+  async function handleUpdateAnnouncement(id, data) {
+    try {
+      await api.updateAnnouncement(id, data)
+      const annData = await api.getAllAnnouncements()
+      setAnnouncements(annData)
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
-  function handleToggleAnnouncement(id) {
-    setAnnouncements(announcements.map((a) => a._id === id ? { ...a, isActive: !a.isActive } : a))
+  async function handleDeleteAnnouncement(id) {
+    try {
+      await api.deleteAnnouncement(id)
+      const annData = await api.getAllAnnouncements()
+      setAnnouncements(annData)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function handleToggleAnnouncement(id) {
+    try {
+      await api.toggleAnnouncement(id)
+      const annData = await api.getAllAnnouncements()
+      setAnnouncements(annData)
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   // ---- HEADER SETUP ----
@@ -208,7 +263,7 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
     { label: 'Submit Complaint', type: 'button', variant: 'button-primary', onClick: () => goToScreen('submit') },
   ]
 
-  // ---- QUICK STATS for the hero panel ----
+  // ---- QUICK STATS for hero ----
   const openCount = tickets.filter((t) => t.status !== 'closed' && t.status !== 'rejected').length
   const resolvedCount = tickets.filter((t) => t.status === 'resolved' || t.status === 'closed').length
   const ratedTickets = tickets.filter((t) => t.rating !== null)
@@ -216,7 +271,7 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
     ? (ratedTickets.reduce((s, t) => s + t.rating, 0) / ratedTickets.length).toFixed(1)
     : '0.0'
 
-  // ---- SUB-NAV ITEMS based on role ----
+  // ---- SUB-NAV ITEMS ----
   function getSubNavItems() {
     const items = []
     if (currentRole === 'student') {
@@ -243,21 +298,34 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
     return items
   }
 
-  // ---- RENDER ACTIVE SCREEN ----
+  // ---- RENDER SCREEN ----
   function renderScreen() {
+    // Show loading state
+    if (isLoading) {
+      return (
+        <section className="maint-section">
+          <div className="empty-state">
+            <span className="empty-state-icon">⏳</span>
+            <h3>Loading...</h3>
+            <p>Fetching data from the server. Please wait.</p>
+          </div>
+        </section>
+      )
+    }
+
     switch (activeScreen) {
       case 'submit':
         return <SubmitComplaint onSubmit={handleSubmitTicket} />
       case 'my-tickets':
-        return <MyTickets tickets={tickets.filter((t) => t.submittedBy.id === currentUser.id)} onViewTicket={viewTicketDetail} />
+        return <MyTickets tickets={tickets} onViewTicket={viewTicketDetail} />
       case 'ticket-detail':
         return <TicketDetail ticket={selectedTicket} currentUser={currentUser} onRate={handleRateTicket}
           onBack={() => goToScreen(currentRole === 'admin' ? 'admin-tickets' : currentRole === 'staff' ? 'tasks' : 'my-tickets')} />
       case 'tasks':
-        return <TechnicianTasks tickets={tickets.filter((t) => t.assignedTo && t.assignedTo.id === currentUser.id)}
+        return <TechnicianTasks tickets={tickets}
           onViewTicket={viewTicketDetail} onStart={handleStartTicket} onResolve={handleResolveTicket} />
       case 'admin-tickets':
-        return <AdminTickets tickets={tickets} technicians={mockTechnicians}
+        return <AdminTickets tickets={tickets} technicians={technicians}
           onViewTicket={viewTicketDetail} onAssign={handleAssignTicket} onReject={handleRejectTicket} />
       case 'analytics':
         return <MaintenanceAnalytics tickets={tickets} />
@@ -268,7 +336,7 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
       case 'reports':
         return <DownloadReports tickets={tickets} />
       default:
-        return <MyTickets tickets={tickets.filter((t) => t.submittedBy.id === currentUser.id)} onViewTicket={viewTicketDetail} />
+        return <MyTickets tickets={tickets} onViewTicket={viewTicketDetail} />
     }
   }
 
@@ -282,6 +350,14 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
       />
 
       <main className="maintenance-shell">
+        {/* Error banner - shows when API call fails */}
+        {error && (
+          <div className="maint-error-banner">
+            <span>{error}</span>
+            <button type="button" onClick={() => setError(null)}>✕</button>
+          </div>
+        )}
+
         {/* ============ HERO SECTION ============ */}
         <section className="maint-hero">
           <div className="maint-hero-copy">
@@ -302,6 +378,13 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
                 {currentRole === 'admin' ? 'View Analytics' : currentRole === 'staff' ? 'View Tasks' : 'View My Tickets'}
               </button>
             </div>
+
+            {/* Show logged in user info */}
+            {currentUser && (
+              <div className="maint-user-info">
+                Logged in as: <strong>{currentUser.name}</strong> ({currentUser.role})
+              </div>
+            )}
           </div>
 
           {/* Hero right panel - dark card with live stats */}
@@ -312,7 +395,9 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
                   <p className="panel-label">Live system snapshot</p>
                   <h3>Maintenance command view</h3>
                 </div>
-                <span className="status-pill">Active</span>
+                <span className="status-pill">
+                  {error ? 'Offline' : 'Live'}
+                </span>
               </div>
 
               <div className="metric-grid">
@@ -352,11 +437,11 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
                   </div>
                   <div>
                     <span>Active technicians</span>
-                    <strong>{mockTechnicians.length} staff members on duty</strong>
+                    <strong>{technicians.length || 3} staff members on duty</strong>
                   </div>
                   <div>
-                    <span>SLA compliance</span>
-                    <strong>82% resolved within target window</strong>
+                    <span>Data source</span>
+                    <strong>{error ? 'Mock data (offline)' : 'MongoDB Atlas (live)'}</strong>
                   </div>
                 </div>
               </div>
@@ -365,51 +450,34 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
         </section>
 
         {/* ============ STICKY CONTROLS BAR ============ */}
-        {/* Combined role switcher + subnav in one bar that sticks to top while scrolling */}
         <div className="maint-sticky-bar">
-          {/* Role switcher - dark pill group */}
           <div className="maint-role-group">
             <span className="maint-role-label">View as</span>
-            <button
-              type="button"
+            <button type="button"
               className={`maint-role-pill ${currentRole === 'student' ? 'role-pill-active' : ''}`}
-              onClick={() => { setCurrentRole('student'); goToScreen('my-tickets') }}
-            >
-              Student
-            </button>
-            <button
-              type="button"
+              onClick={() => switchRole('student')}
+            >Student</button>
+            <button type="button"
               className={`maint-role-pill ${currentRole === 'staff' ? 'role-pill-active' : ''}`}
-              onClick={() => { setCurrentRole('staff'); goToScreen('tasks') }}
-            >
-              Technician
-            </button>
-            <button
-              type="button"
+              onClick={() => switchRole('staff')}
+            >Technician</button>
+            <button type="button"
               className={`maint-role-pill ${currentRole === 'admin' ? 'role-pill-active' : ''}`}
-              onClick={() => { setCurrentRole('admin'); goToScreen('admin-tickets') }}
-            >
-              Admin
-            </button>
+              onClick={() => switchRole('admin')}
+            >Admin</button>
           </div>
 
-          {/* Divider line */}
           <span className="maint-bar-divider" />
 
-          {/* Sub-navigation tabs */}
           {getSubNavItems().map((item) => (
-            <button
-              key={item.key}
-              type="button"
+            <button key={item.key} type="button"
               className={`maint-subnav-btn ${item.active ? 'subnav-btn-active' : ''}`}
               onClick={item.onClick}
-            >
-              {item.label}
-            </button>
+            >{item.label}</button>
           ))}
         </div>
 
-        {/* ============ ACTIVE SCREEN CONTENT ============ */}
+        {/* ============ ACTIVE SCREEN ============ */}
         {renderScreen()}
       </main>
 

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
+const authRoutes = require('./routes/authRoutes');
 const ticketRoutes = require('./routes/ticketRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 
@@ -33,11 +34,12 @@ app.use('/uploads', express.static('uploads'));
 // All maintenance related endpoints start with /api/tickets
 // All announcement endpoints start with /api/announcements
 // ============================================
+app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/announcements', announcementRoutes);
 
 // Simple test route to check if server is running
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
   res.json({ message: 'STAY & GO - Maintenance API is running!' });
 });
 
