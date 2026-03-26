@@ -14,27 +14,16 @@ import './maintenance.css'
 
 // ============================================
 // MaintenanceDashboard - Main entry point for the maintenance module
-// This component handles sub-screen navigation inside the maintenance section
-// It manages all ticket data and passes it down to child components
+// Premium hero section + role-based sub-navigation + screen routing
+// Matches the team lead's design language (dark cards, glassmorphism, gradients)
 // ============================================
 
 function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage }) {
   // ---- STATE MANAGEMENT ----
-
-  // Which sub-screen is currently showing
   const [activeScreen, setActiveScreen] = useState('my-tickets')
-
-  // Store all tickets in state (using mock data for now, will connect to API later)
   const [tickets, setTickets] = useState(mockTickets)
-
-  // Store all announcements in state
   const [announcements, setAnnouncements] = useState(mockAnnouncements)
-
-  // Which ticket is selected for detail view
   const [selectedTicket, setSelectedTicket] = useState(null)
-
-  // Current user role - change this to test different views
-  // Options: 'student', 'staff', 'admin'
   const [currentRole, setCurrentRole] = useState('student')
 
   // Get current user based on selected role
@@ -46,30 +35,35 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
 
   // ---- NAVIGATION HELPERS ----
 
-  // Navigate to a sub-screen inside the maintenance module
+  // Scroll to the content area (below hero and controls), not the top of the page
+  function scrollToContent() {
+    const controls = document.querySelector('.maint-controls')
+    if (controls) {
+      const top = controls.getBoundingClientRect().top + window.scrollY - 80
+      window.scrollTo({ top, behavior: 'smooth' })
+    }
+  }
+
   function goToScreen(screen) {
     setActiveScreen(screen)
     setSelectedTicket(null)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    scrollToContent()
   }
 
-  // Open ticket detail view for a specific ticket
   function viewTicketDetail(ticket) {
     setSelectedTicket(ticket)
     setActiveScreen('ticket-detail')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    scrollToContent()
   }
 
-  // ---- TICKET ACTIONS (Mock - will be replaced with API calls) ----
+  // ---- TICKET ACTIONS ----
 
   // Student submits a new ticket
   function handleSubmitTicket(formData) {
-    // Create a new ticket ID based on today's date and ticket count
     const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
     const count = tickets.length + 1
     const ticketId = `MT-${today}-${String(count).padStart(3, '0')}`
 
-    // Build the new ticket object
     const newTicket = {
       _id: String(Date.now()),
       ticketId,
@@ -82,43 +76,32 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
       rating: null,
       ratingFeedback: null,
       attachments: [],
-      statusHistory: [
-        {
-          status: 'submitted',
-          changedBy: currentUser,
-          changedAt: new Date().toISOString(),
-          note: 'Ticket submitted by student',
-        },
-      ],
+      statusHistory: [{
+        status: 'submitted',
+        changedBy: currentUser,
+        changedAt: new Date().toISOString(),
+        note: 'Ticket submitted by student',
+      }],
       createdAt: new Date().toISOString(),
     }
 
-    // Add new ticket to the beginning of the list
     setTickets([newTicket, ...tickets])
-
-    // Show success and go to my tickets screen
     goToScreen('my-tickets')
   }
 
-  // Admin assigns a technician to a ticket
+  // Admin assigns a technician
   function handleAssignTicket(ticketId, technicianId) {
     const technician = mockTechnicians.find((t) => t.id === technicianId)
-
     setTickets(tickets.map((ticket) => {
       if (ticket._id === ticketId) {
         return {
           ...ticket,
           status: 'assigned',
           assignedTo: technician,
-          statusHistory: [
-            ...ticket.statusHistory,
-            {
-              status: 'assigned',
-              changedBy: currentUser,
-              changedAt: new Date().toISOString(),
-              note: 'Technician assigned by admin',
-            },
-          ],
+          statusHistory: [...ticket.statusHistory, {
+            status: 'assigned', changedBy: currentUser,
+            changedAt: new Date().toISOString(), note: 'Technician assigned by admin',
+          }],
         }
       }
       return ticket
@@ -133,44 +116,34 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
           ...ticket,
           status: 'rejected',
           rejectionReason: reason,
-          statusHistory: [
-            ...ticket.statusHistory,
-            {
-              status: 'rejected',
-              changedBy: currentUser,
-              changedAt: new Date().toISOString(),
-              note: reason,
-            },
-          ],
+          statusHistory: [...ticket.statusHistory, {
+            status: 'rejected', changedBy: currentUser,
+            changedAt: new Date().toISOString(), note: reason,
+          }],
         }
       }
       return ticket
     }))
   }
 
-  // Technician starts working on a ticket
+  // Technician starts working
   function handleStartTicket(ticketId) {
     setTickets(tickets.map((ticket) => {
       if (ticket._id === ticketId) {
         return {
           ...ticket,
           status: 'in_progress',
-          statusHistory: [
-            ...ticket.statusHistory,
-            {
-              status: 'in_progress',
-              changedBy: currentUser,
-              changedAt: new Date().toISOString(),
-              note: 'Technician started working on the issue',
-            },
-          ],
+          statusHistory: [...ticket.statusHistory, {
+            status: 'in_progress', changedBy: currentUser,
+            changedAt: new Date().toISOString(), note: 'Technician started working on the issue',
+          }],
         }
       }
       return ticket
     }))
   }
 
-  // Technician resolves a ticket
+  // Technician resolves
   function handleResolveTicket(ticketId, resolutionNote) {
     setTickets(tickets.map((ticket) => {
       if (ticket._id === ticketId) {
@@ -178,22 +151,17 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
           ...ticket,
           status: 'resolved',
           resolutionNote,
-          statusHistory: [
-            ...ticket.statusHistory,
-            {
-              status: 'resolved',
-              changedBy: currentUser,
-              changedAt: new Date().toISOString(),
-              note: resolutionNote,
-            },
-          ],
+          statusHistory: [...ticket.statusHistory, {
+            status: 'resolved', changedBy: currentUser,
+            changedAt: new Date().toISOString(), note: resolutionNote,
+          }],
         }
       }
       return ticket
     }))
   }
 
-  // Student rates a resolved ticket
+  // Student rates
   function handleRateTicket(ticketId, rating, ratingFeedback) {
     setTickets(tickets.map((ticket) => {
       if (ticket._id === ticketId) {
@@ -202,15 +170,11 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
           status: 'closed',
           rating,
           ratingFeedback,
-          statusHistory: [
-            ...ticket.statusHistory,
-            {
-              status: 'closed',
-              changedBy: currentUser,
-              changedAt: new Date().toISOString(),
-              note: `Student rated ${rating}/5${ratingFeedback ? ': ' + ratingFeedback : ''}`,
-            },
-          ],
+          statusHistory: [...ticket.statusHistory, {
+            status: 'closed', changedBy: currentUser,
+            changedAt: new Date().toISOString(),
+            note: `Student rated ${rating}/5${ratingFeedback ? ': ' + ratingFeedback : ''}`,
+          }],
         }
       }
       return ticket
@@ -218,51 +182,43 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
   }
 
   // ---- ANNOUNCEMENT ACTIONS ----
-
-  // Admin creates a new announcement
   function handleCreateAnnouncement(data) {
     const newAnnouncement = {
-      _id: String(Date.now()),
-      ...data,
-      isActive: true,
-      createdBy: currentUser,
-      createdAt: new Date().toISOString(),
+      _id: String(Date.now()), ...data, isActive: true,
+      createdBy: currentUser, createdAt: new Date().toISOString(),
     }
     setAnnouncements([newAnnouncement, ...announcements])
   }
 
-  // Admin updates an existing announcement
   function handleUpdateAnnouncement(id, data) {
-    setAnnouncements(announcements.map((a) =>
-      a._id === id ? { ...a, ...data } : a
-    ))
+    setAnnouncements(announcements.map((a) => a._id === id ? { ...a, ...data } : a))
   }
 
-  // Admin deletes an announcement
   function handleDeleteAnnouncement(id) {
     setAnnouncements(announcements.filter((a) => a._id !== id))
   }
 
-  // Admin toggles announcement visibility
   function handleToggleAnnouncement(id) {
-    setAnnouncements(announcements.map((a) =>
-      a._id === id ? { ...a, isActive: !a.isActive } : a
-    ))
+    setAnnouncements(announcements.map((a) => a._id === id ? { ...a, isActive: !a.isActive } : a))
   }
 
   // ---- HEADER SETUP ----
-
-  // Action buttons shown in the header
   const actionItems = [
     { label: 'Back to Home', type: 'button', variant: 'button-ghost', onClick: onNavigateHome },
     { label: 'Submit Complaint', type: 'button', variant: 'button-primary', onClick: () => goToScreen('submit') },
   ]
 
-  // Build the sub-navigation tabs based on user role
+  // ---- QUICK STATS for the hero panel ----
+  const openCount = tickets.filter((t) => t.status !== 'closed' && t.status !== 'rejected').length
+  const resolvedCount = tickets.filter((t) => t.status === 'resolved' || t.status === 'closed').length
+  const ratedTickets = tickets.filter((t) => t.rating !== null)
+  const avgRating = ratedTickets.length > 0
+    ? (ratedTickets.reduce((s, t) => s + t.rating, 0) / ratedTickets.length).toFixed(1)
+    : '0.0'
+
+  // ---- SUB-NAV ITEMS based on role ----
   function getSubNavItems() {
     const items = []
-
-    // Student tabs
     if (currentRole === 'student') {
       items.push(
         { label: 'My Tickets', key: 'my-tickets', onClick: () => goToScreen('my-tickets'), active: activeScreen === 'my-tickets' },
@@ -270,16 +226,12 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
         { label: 'Announcements', key: 'announcements', onClick: () => goToScreen('announcements'), active: activeScreen === 'announcements' },
       )
     }
-
-    // Technician tabs
     if (currentRole === 'staff') {
       items.push(
         { label: 'My Tasks', key: 'tasks', onClick: () => goToScreen('tasks'), active: activeScreen === 'tasks' },
         { label: 'Announcements', key: 'announcements', onClick: () => goToScreen('announcements'), active: activeScreen === 'announcements' },
       )
     }
-
-    // Admin tabs
     if (currentRole === 'admin') {
       items.push(
         { label: 'All Tickets', key: 'admin-tickets', onClick: () => goToScreen('admin-tickets'), active: activeScreen === 'admin-tickets' },
@@ -288,93 +240,35 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
         { label: 'Reports', key: 'reports', onClick: () => goToScreen('reports'), active: activeScreen === 'reports' },
       )
     }
-
     return items
   }
 
-  // ---- RENDER SUB-SCREENS ----
-
-  // This function decides which screen to show based on activeScreen state
+  // ---- RENDER ACTIVE SCREEN ----
   function renderScreen() {
     switch (activeScreen) {
       case 'submit':
-        return (
-          <SubmitComplaint onSubmit={handleSubmitTicket} />
-        )
-
+        return <SubmitComplaint onSubmit={handleSubmitTicket} />
       case 'my-tickets':
-        return (
-          <MyTickets
-            tickets={tickets.filter((t) => t.submittedBy.id === currentUser.id)}
-            onViewTicket={viewTicketDetail}
-          />
-        )
-
+        return <MyTickets tickets={tickets.filter((t) => t.submittedBy.id === currentUser.id)} onViewTicket={viewTicketDetail} />
       case 'ticket-detail':
-        return (
-          <TicketDetail
-            ticket={selectedTicket}
-            currentUser={currentUser}
-            onRate={handleRateTicket}
-            onBack={() => goToScreen(
-              currentRole === 'admin' ? 'admin-tickets' :
-              currentRole === 'staff' ? 'tasks' : 'my-tickets'
-            )}
-          />
-        )
-
+        return <TicketDetail ticket={selectedTicket} currentUser={currentUser} onRate={handleRateTicket}
+          onBack={() => goToScreen(currentRole === 'admin' ? 'admin-tickets' : currentRole === 'staff' ? 'tasks' : 'my-tickets')} />
       case 'tasks':
-        return (
-          <TechnicianTasks
-            tickets={tickets.filter((t) =>
-              t.assignedTo && t.assignedTo.id === currentUser.id
-            )}
-            onViewTicket={viewTicketDetail}
-            onStart={handleStartTicket}
-            onResolve={handleResolveTicket}
-          />
-        )
-
+        return <TechnicianTasks tickets={tickets.filter((t) => t.assignedTo && t.assignedTo.id === currentUser.id)}
+          onViewTicket={viewTicketDetail} onStart={handleStartTicket} onResolve={handleResolveTicket} />
       case 'admin-tickets':
-        return (
-          <AdminTickets
-            tickets={tickets}
-            technicians={mockTechnicians}
-            onViewTicket={viewTicketDetail}
-            onAssign={handleAssignTicket}
-            onReject={handleRejectTicket}
-          />
-        )
-
+        return <AdminTickets tickets={tickets} technicians={mockTechnicians}
+          onViewTicket={viewTicketDetail} onAssign={handleAssignTicket} onReject={handleRejectTicket} />
       case 'analytics':
-        return (
-          <MaintenanceAnalytics tickets={tickets} />
-        )
-
+        return <MaintenanceAnalytics tickets={tickets} />
       case 'announcements':
-        return (
-          <Announcements
-            announcements={announcements}
-            currentRole={currentRole}
-            onCreate={handleCreateAnnouncement}
-            onUpdate={handleUpdateAnnouncement}
-            onDelete={handleDeleteAnnouncement}
-            onToggle={handleToggleAnnouncement}
-          />
-        )
-
+        return <Announcements announcements={announcements} currentRole={currentRole}
+          onCreate={handleCreateAnnouncement} onUpdate={handleUpdateAnnouncement}
+          onDelete={handleDeleteAnnouncement} onToggle={handleToggleAnnouncement} />
       case 'reports':
-        return (
-          <DownloadReports tickets={tickets} />
-        )
-
+        return <DownloadReports tickets={tickets} />
       default:
-        return (
-          <MyTickets
-            tickets={tickets.filter((t) => t.submittedBy.id === currentUser.id)}
-            onViewTicket={viewTicketDetail}
-          />
-        )
+        return <MyTickets tickets={tickets.filter((t) => t.submittedBy.id === currentUser.id)} onViewTicket={viewTicketDetail} />
     }
   }
 
@@ -388,48 +282,134 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
       />
 
       <main className="maintenance-shell">
-        {/* Role Switcher - for demo/testing purposes */}
-        {/* This lets us test different views without logging in as different users */}
-        <div className="role-switcher">
-          <span className="role-switcher-label">View as:</span>
-          <button
-            type="button"
-            className={`role-switcher-btn ${currentRole === 'student' ? 'role-active' : ''}`}
-            onClick={() => { setCurrentRole('student'); goToScreen('my-tickets') }}
-          >
-            Student
-          </button>
-          <button
-            type="button"
-            className={`role-switcher-btn ${currentRole === 'staff' ? 'role-active' : ''}`}
-            onClick={() => { setCurrentRole('staff'); goToScreen('tasks') }}
-          >
-            Technician
-          </button>
-          <button
-            type="button"
-            className={`role-switcher-btn ${currentRole === 'admin' ? 'role-active' : ''}`}
-            onClick={() => { setCurrentRole('admin'); goToScreen('admin-tickets') }}
-          >
-            Admin
-          </button>
-        </div>
+        {/* ============ HERO SECTION ============ */}
+        <section className="maint-hero">
+          <div className="maint-hero-copy">
+            <p className="eyebrow">Maintenance Workspace</p>
+            <h1>Track, resolve, and improve hostel maintenance.</h1>
+            <p>
+              Submit complaints, monitor ticket progress, and manage the full maintenance
+              workflow with transparent status tracking and service ratings.
+            </p>
 
-        {/* Sub-navigation tabs - shows different tabs based on user role */}
-        <nav className="maintenance-subnav" aria-label="Maintenance sub navigation">
-          {getSubNavItems().map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              className={`subnav-btn ${item.active ? 'subnav-active' : ''}`}
-              onClick={item.onClick}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
+            <div className="hero-actions">
+              <button className="button button-dark" type="button" onClick={() => goToScreen('submit')}>
+                Submit Complaint
+              </button>
+              <button className="button button-outline" type="button" onClick={() => goToScreen(
+                currentRole === 'admin' ? 'analytics' : currentRole === 'staff' ? 'tasks' : 'my-tickets'
+              )}>
+                {currentRole === 'admin' ? 'View Analytics' : currentRole === 'staff' ? 'View Tasks' : 'View My Tickets'}
+              </button>
+            </div>
+          </div>
 
-        {/* Render the active sub-screen */}
+          {/* Hero right panel - dark card with live stats */}
+          <div className="maint-hero-panel">
+            <div className="maint-preview-card">
+              <div className="preview-header">
+                <div>
+                  <p className="panel-label">Live system snapshot</p>
+                  <h3>Maintenance command view</h3>
+                </div>
+                <span className="status-pill">Active</span>
+              </div>
+
+              <div className="metric-grid">
+                <article className="metric-tile">
+                  <span>Total Tickets</span>
+                  <strong>{tickets.length}</strong>
+                  <small>All time</small>
+                </article>
+                <article className="metric-tile">
+                  <span>Open Tickets</span>
+                  <strong>{openCount}</strong>
+                  <small>Need attention</small>
+                </article>
+                <article className="metric-tile">
+                  <span>Resolved</span>
+                  <strong>{resolvedCount}</strong>
+                  <small>Successfully fixed</small>
+                </article>
+                <article className="metric-tile">
+                  <span>Avg Rating</span>
+                  <strong>{avgRating}</strong>
+                  <small>{ratedTickets.length} reviews</small>
+                </article>
+              </div>
+
+              <div className="maint-preview-footer">
+                <div className="ring-widget" aria-hidden="true">
+                  <div className="ring-widget-core">
+                    <strong>{tickets.length > 0 ? Math.round((resolvedCount / tickets.length) * 100) : 0}%</strong>
+                    <span>resolution rate</span>
+                  </div>
+                </div>
+                <div className="preview-list">
+                  <div>
+                    <span>Ticket workflow</span>
+                    <strong>Submit → Assign → Fix → Rate → Close</strong>
+                  </div>
+                  <div>
+                    <span>Active technicians</span>
+                    <strong>{mockTechnicians.length} staff members on duty</strong>
+                  </div>
+                  <div>
+                    <span>SLA compliance</span>
+                    <strong>82% resolved within target window</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ============ ROLE SWITCHER + SUB-NAV ============ */}
+        <section className="maint-controls">
+          {/* Role switcher pills */}
+          <div className="maint-role-bar">
+            <span className="maint-role-label">View as:</span>
+            <div className="maint-role-pills">
+              <button
+                type="button"
+                className={`maint-role-pill ${currentRole === 'student' ? 'role-pill-active' : ''}`}
+                onClick={() => { setCurrentRole('student'); goToScreen('my-tickets') }}
+              >
+                Student
+              </button>
+              <button
+                type="button"
+                className={`maint-role-pill ${currentRole === 'staff' ? 'role-pill-active' : ''}`}
+                onClick={() => { setCurrentRole('staff'); goToScreen('tasks') }}
+              >
+                Technician
+              </button>
+              <button
+                type="button"
+                className={`maint-role-pill ${currentRole === 'admin' ? 'role-pill-active' : ''}`}
+                onClick={() => { setCurrentRole('admin'); goToScreen('admin-tickets') }}
+              >
+                Admin
+              </button>
+            </div>
+          </div>
+
+          {/* Sub-navigation tabs */}
+          <nav className="maint-subnav" aria-label="Maintenance sub navigation">
+            {getSubNavItems().map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={`maint-subnav-btn ${item.active ? 'subnav-btn-active' : ''}`}
+                onClick={item.onClick}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </section>
+
+        {/* ============ ACTIVE SCREEN CONTENT ============ */}
         {renderScreen()}
       </main>
 
