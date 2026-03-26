@@ -122,39 +122,48 @@
   margin-top: 26px;
 }
 
-/* ---- CONTROLS BAR (role switcher + subnav) ---- */
+/* ---- STICKY CONTROLS BAR (combined role + nav) ---- */
 
-.maint-controls {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 14px;
-  align-items: center;
-}
-
-.maint-role-bar {
+.maint-sticky-bar {
+  position: sticky;
+  top: 70px;
+  z-index: 45;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px 8px 18px;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(16, 19, 18, 0.06);
+  box-shadow: 0 14px 44px rgba(16, 19, 18, 0.1);
+  flex-wrap: wrap;
+}
+
+.maint-role-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px 4px 14px;
   border-radius: 999px;
-  background:
-    linear-gradient(155deg, rgba(16, 19, 18, 0.97), rgba(20, 25, 23, 0.95)),
-    linear-gradient(140deg, rgba(186, 249, 26, 0.12), rgba(135, 109, 255, 0.08));
-  box-shadow: 0 16px 44px rgba(16, 19, 18, 0.18);
+  background: #101312;
+  box-shadow: 0 8px 24px rgba(16, 19, 18, 0.18);
 }
 
 .maint-role-label {
-  font-size: 0.82rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.55);
-  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
-.maint-role-pills {
-  display: flex;
-  gap: 4px;
+.maint-bar-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(16, 19, 18, 0.1);
+  margin: 0 4px;
 }
 
 .maint-role-pill {
@@ -315,12 +324,36 @@
   overflow: hidden;
 }
 
+/* Priority left border — color shows urgency at a glance */
 .ticket-card::before {
   content: '';
   position: absolute;
-  inset: 0 0 auto;
-  height: 4px;
-  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-soft));
+  left: 0; top: 0; bottom: 0;
+  width: 5px;
+  background: linear-gradient(180deg, var(--color-accent), var(--color-accent-soft));
+}
+
+.tc-priority-low::before { background: linear-gradient(180deg, #BAF91A, #a4d916); }
+.tc-priority-medium::before { background: linear-gradient(180deg, #f59e0b, #d97706); }
+.tc-priority-high::before { background: linear-gradient(180deg, #ff7f00, #e06500); }
+.tc-priority-emergency::before { background: linear-gradient(180deg, #dc3545, #b02a37); }
+
+/* Hover arrow — slides in from right on hover */
+.ticket-card-arrow {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%) translateX(10px);
+  opacity: 0;
+  transition: all 250ms ease;
+  font-size: 1.3rem;
+  color: var(--color-accent);
+  font-weight: 800;
+}
+
+.ticket-card:hover .ticket-card-arrow {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
 }
 
 .ticket-card:hover {
@@ -388,14 +421,28 @@
 .ticket-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
-  align-items: flex-end;
-  padding: 18px 22px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.12));
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 14px 36px rgba(16, 19, 18, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(14px);
+  gap: 10px;
+  align-items: center;
+  padding: 12px 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(16, 19, 18, 0.06);
+}
+
+.filter-label-tag {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.filter-result-count {
+  margin-left: auto;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .filter-group { display: flex; flex-direction: column; gap: 6px; }
@@ -815,7 +862,50 @@
 .empty-state h3 { margin: 0; font-size: 1.2rem; color: var(--color-text); }
 .empty-state p { margin: 0; color: var(--color-muted); max-width: 400px; }
 
-/* ---- STATUS COUNT BADGES ---- */
+/* ---- STATUS OVERVIEW CARDS (color-coded) ---- */
+
+.status-overview {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.status-ov-card {
+  padding: 14px 16px;
+  border-radius: 16px;
+  text-align: center;
+  border: 1px solid rgba(16, 19, 18, 0.04);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.status-ov-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 19, 18, 0.06);
+}
+
+.status-ov-card span {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.status-ov-card strong {
+  display: block;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.5rem;
+  margin-top: 4px;
+}
+
+.status-ov-total { background: rgba(16, 19, 18, 0.04); color: var(--color-text); }
+.status-ov-submitted { background: rgba(16, 19, 18, 0.04); color: #5b645f; }
+.status-ov-assigned { background: rgba(135, 109, 255, 0.08); color: #6b54d9; }
+.status-ov-progress { background: rgba(186, 249, 26, 0.1); color: #4a6d08; }
+.status-ov-resolved { background: rgba(226, 255, 153, 0.2); color: #3d5c06; }
+.status-ov-closed { background: rgba(16, 19, 18, 0.03); color: #8a928d; }
+
+/* ---- LEGACY STATUS COUNT BADGES (for admin/technician views) ---- */
 
 .status-counts { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
 .status-count-item {
@@ -829,7 +919,8 @@
 @media (max-width: 1024px) {
   .maint-hero { grid-template-columns: 1fr; }
   .maint-hero-copy h1 { max-width: none; }
-  .maint-controls { grid-template-columns: 1fr; }
+  .maint-sticky-bar { flex-wrap: wrap; }
+  .status-overview { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 900px) {
@@ -849,7 +940,9 @@
 @media (max-width: 600px) {
   .analytics-kpi-grid { grid-template-columns: 1fr; }
   .ticket-grid { grid-template-columns: 1fr; }
-  .maint-subnav { gap: 4px; padding: 6px; }
   .maint-subnav-btn { padding: 8px 14px; font-size: 0.82rem; }
-  .maint-role-bar { flex-direction: column; gap: 6px; padding: 12px; border-radius: var(--radius-md); }
+  .maint-sticky-bar { padding: 8px; border-radius: 16px; }
+  .maint-role-group { flex-wrap: wrap; padding: 6px; border-radius: 14px; }
+  .maint-bar-divider { display: none; }
+  .status-overview { grid-template-columns: repeat(2, 1fr); }
 }

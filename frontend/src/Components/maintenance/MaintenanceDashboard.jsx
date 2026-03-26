@@ -37,7 +37,7 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
 
   // Scroll to the content area (below hero and controls), not the top of the page
   function scrollToContent() {
-    const controls = document.querySelector('.maint-controls')
+    const controls = document.querySelector('.maint-sticky-bar')
     if (controls) {
       const top = controls.getBoundingClientRect().top + window.scrollY - 80
       window.scrollTo({ top, behavior: 'smooth' })
@@ -364,50 +364,50 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
           </div>
         </section>
 
-        {/* ============ ROLE SWITCHER + SUB-NAV ============ */}
-        <section className="maint-controls">
-          {/* Role switcher pills */}
-          <div className="maint-role-bar">
-            <span className="maint-role-label">View as:</span>
-            <div className="maint-role-pills">
-              <button
-                type="button"
-                className={`maint-role-pill ${currentRole === 'student' ? 'role-pill-active' : ''}`}
-                onClick={() => { setCurrentRole('student'); goToScreen('my-tickets') }}
-              >
-                Student
-              </button>
-              <button
-                type="button"
-                className={`maint-role-pill ${currentRole === 'staff' ? 'role-pill-active' : ''}`}
-                onClick={() => { setCurrentRole('staff'); goToScreen('tasks') }}
-              >
-                Technician
-              </button>
-              <button
-                type="button"
-                className={`maint-role-pill ${currentRole === 'admin' ? 'role-pill-active' : ''}`}
-                onClick={() => { setCurrentRole('admin'); goToScreen('admin-tickets') }}
-              >
-                Admin
-              </button>
-            </div>
+        {/* ============ STICKY CONTROLS BAR ============ */}
+        {/* Combined role switcher + subnav in one bar that sticks to top while scrolling */}
+        <div className="maint-sticky-bar">
+          {/* Role switcher - dark pill group */}
+          <div className="maint-role-group">
+            <span className="maint-role-label">View as</span>
+            <button
+              type="button"
+              className={`maint-role-pill ${currentRole === 'student' ? 'role-pill-active' : ''}`}
+              onClick={() => { setCurrentRole('student'); goToScreen('my-tickets') }}
+            >
+              Student
+            </button>
+            <button
+              type="button"
+              className={`maint-role-pill ${currentRole === 'staff' ? 'role-pill-active' : ''}`}
+              onClick={() => { setCurrentRole('staff'); goToScreen('tasks') }}
+            >
+              Technician
+            </button>
+            <button
+              type="button"
+              className={`maint-role-pill ${currentRole === 'admin' ? 'role-pill-active' : ''}`}
+              onClick={() => { setCurrentRole('admin'); goToScreen('admin-tickets') }}
+            >
+              Admin
+            </button>
           </div>
 
+          {/* Divider line */}
+          <span className="maint-bar-divider" />
+
           {/* Sub-navigation tabs */}
-          <nav className="maint-subnav" aria-label="Maintenance sub navigation">
-            {getSubNavItems().map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className={`maint-subnav-btn ${item.active ? 'subnav-btn-active' : ''}`}
-                onClick={item.onClick}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-        </section>
+          {getSubNavItems().map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`maint-subnav-btn ${item.active ? 'subnav-btn-active' : ''}`}
+              onClick={item.onClick}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
 
         {/* ============ ACTIVE SCREEN CONTENT ============ */}
         {renderScreen()}

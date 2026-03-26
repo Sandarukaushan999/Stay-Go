@@ -1,8 +1,17 @@
-// TicketFilters component - filter bar for ticket lists
-// Lets users filter tickets by status, priority, category, and search text
+// TicketFilters component - REDESIGNED compact inline filter bar
+// All filters + sort + result count in one clean row
 // Used in MyTickets (student), TechnicianTasks, and AdminTickets screens
 
-function TicketFilters({ filters, onFilterChange, showCategory = true, showSearch = false }) {
+function TicketFilters({
+  filters,
+  onFilterChange,
+  showCategory = true,
+  showSearch = false,
+  sortBy,
+  onSortChange,
+  resultCount,
+  totalCount,
+}) {
   // Handle when user changes any filter dropdown or search input
   function handleChange(filterName, value) {
     onFilterChange({ ...filters, [filterName]: value })
@@ -10,72 +19,88 @@ function TicketFilters({ filters, onFilterChange, showCategory = true, showSearc
 
   return (
     <div className="ticket-filters">
-      {/* Status filter dropdown */}
-      <div className="filter-group">
-        <label className="filter-label">Status</label>
-        <select
-          className="filter-select"
-          value={filters.status || ''}
-          onChange={(e) => handleChange('status', e.target.value)}
-        >
-          <option value="">All Status</option>
-          <option value="submitted">Submitted</option>
-          <option value="assigned">Assigned</option>
-          <option value="in_progress">In Progress</option>
-          <option value="resolved">Resolved</option>
-          <option value="closed">Closed</option>
-          <option value="rejected">Rejected</option>
-        </select>
-      </div>
+      {/* Label */}
+      <span className="filter-label-tag">Filters</span>
 
-      {/* Priority filter dropdown */}
-      <div className="filter-group">
-        <label className="filter-label">Priority</label>
-        <select
-          className="filter-select"
-          value={filters.priority || ''}
-          onChange={(e) => handleChange('priority', e.target.value)}
-        >
-          <option value="">All Priority</option>
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="emergency">Emergency</option>
-        </select>
-      </div>
+      {/* Status filter */}
+      <select
+        className="filter-select"
+        value={filters.status || ''}
+        onChange={(e) => handleChange('status', e.target.value)}
+        aria-label="Filter by status"
+      >
+        <option value="">All Status</option>
+        <option value="submitted">Submitted</option>
+        <option value="assigned">Assigned</option>
+        <option value="in_progress">In Progress</option>
+        <option value="resolved">Resolved</option>
+        <option value="closed">Closed</option>
+        <option value="rejected">Rejected</option>
+      </select>
 
-      {/* Category filter dropdown - only shown when showCategory is true */}
+      {/* Priority filter */}
+      <select
+        className="filter-select"
+        value={filters.priority || ''}
+        onChange={(e) => handleChange('priority', e.target.value)}
+        aria-label="Filter by priority"
+      >
+        <option value="">All Priority</option>
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+        <option value="emergency">Emergency</option>
+      </select>
+
+      {/* Category filter - only shown when needed */}
       {showCategory && (
-        <div className="filter-group">
-          <label className="filter-label">Category</label>
-          <select
-            className="filter-select"
-            value={filters.category || ''}
-            onChange={(e) => handleChange('category', e.target.value)}
-          >
-            <option value="">All Categories</option>
-            <option value="plumbing">Plumbing</option>
-            <option value="electrical">Electrical</option>
-            <option value="furniture">Furniture</option>
-            <option value="cleaning">Cleaning</option>
-            <option value="network">Network</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
+        <select
+          className="filter-select"
+          value={filters.category || ''}
+          onChange={(e) => handleChange('category', e.target.value)}
+          aria-label="Filter by category"
+        >
+          <option value="">All Categories</option>
+          <option value="plumbing">🔧 Plumbing</option>
+          <option value="electrical">⚡ Electrical</option>
+          <option value="furniture">🪑 Furniture</option>
+          <option value="cleaning">🧹 Cleaning</option>
+          <option value="network">🌐 Network</option>
+          <option value="other">📋 Other</option>
+        </select>
       )}
 
-      {/* Search input - only shown when showSearch is true */}
+      {/* Sort dropdown - only shown when provided */}
+      {onSortChange && (
+        <select
+          className="filter-select"
+          value={sortBy || 'newest'}
+          onChange={(e) => onSortChange(e.target.value)}
+          aria-label="Sort by"
+        >
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="priority">Priority (Highest)</option>
+        </select>
+      )}
+
+      {/* Search input - only shown when needed */}
       {showSearch && (
-        <div className="filter-group filter-group-search">
-          <label className="filter-label">Search</label>
-          <input
-            type="text"
-            className="filter-input"
-            placeholder="Search by ID, title, or room..."
-            value={filters.search || ''}
-            onChange={(e) => handleChange('search', e.target.value)}
-          />
-        </div>
+        <input
+          type="text"
+          className="filter-input"
+          placeholder="Search ID, title, or room..."
+          value={filters.search || ''}
+          onChange={(e) => handleChange('search', e.target.value)}
+          aria-label="Search tickets"
+        />
+      )}
+
+      {/* Result count - pushed to the right */}
+      {totalCount !== undefined && (
+        <span className="filter-result-count">
+          {resultCount} of {totalCount} tickets
+        </span>
       )}
 
       {/* Clear all filters button */}
@@ -84,7 +109,7 @@ function TicketFilters({ filters, onFilterChange, showCategory = true, showSearc
         className="filter-clear-btn"
         onClick={() => onFilterChange({ status: '', priority: '', category: '', search: '' })}
       >
-        Clear Filters
+        Clear
       </button>
     </div>
   )
