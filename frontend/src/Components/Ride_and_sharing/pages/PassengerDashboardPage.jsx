@@ -1,48 +1,86 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppButton from '../components/common/AppButton';
-import AppInput from '../components/common/AppInput';
-import LiveTrackingMap from '../components/maps/LiveTrackingMap';
 import LocationPickerMap from '../components/maps/LocationPickerMap';
 import RideRouteMap from '../components/maps/RideRouteMap';
 import useAuth from '../hooks/useAuth';
 import useMapRoute from '../hooks/useMapRoute';
 import {
-  cancelRideRequest,
   createRideRequest,
   fetchRideById,
   listMyRideRequests,
-  reportRiderUnsafe,
   searchNearbyRiders,
 } from '../services/rideService';
+import { pushSafetyAlert } from '../services/safetyAlertService';
+import { joinTripRoom, leaveTripRoom, onTripLocation, sendTripSos } from '../services/trackingService';
 import { CAMPUSES } from '../utils/constants';
 import { formatDistanceMeters, formatDurationSeconds } from '../utils/formatters';
 
-const sections = [
-  { id: 'home', label: 'Home' },
-  { id: 'request', label: 'Request Ride' },
-  { id: 'live', label: 'Live Ride' },
-  { id: 'history', label: 'History' },
-  { id: 'safety', label: 'Safety' },
-  { id: 'profile', label: 'Profile' },
-];
-
-const fallbackNotifications = [
-  { id: 'n1', title: 'Rider Assigned', detail: 'A nearby rider is preparing pickup.', time: 'Now' },
-  { id: 'n2', title: 'Safety Reminder', detail: 'Verify rider and vehicle number before boarding.', time: '5m ago' },
-];
+const FARE_PER_KM = 100;
+const OVERDUE_BUFFER_MINUTES = 10;
 
 const fallbackRiders = [
-  { id: 'r1', name: 'Aiden Perera', vehicleType: 'Sedan', vehicleNumber: 'CAB-3142', seatCount: 3, rating: 4.9, etaMinutes: 4, distanceMeters: 420 },
-  { id: 'r2', name: 'Maya Silva', vehicleType: 'EV Hatchback', vehicleNumber: 'EV-2284', seatCount: 2, rating: 4.8, etaMinutes: 6, distanceMeters: 640 },
-  { id: 'r3', name: 'Nimesh Fernando', vehicleType: 'SUV', vehicleNumber: 'SUV-8871', seatCount: 4, rating: 4.7, etaMinutes: 7, distanceMeters: 820 },
+  {
+    id: 'r1',
+    name: 'Aiden Perera',
+    vehicleType: 'Sedan',
+    vehicleNumber: 'CAB-3142',
+    seatCount: 3,
+    rating: 4.9,
+    etaMinutes: 4,
+    distanceMeters: 420,
+    campus: 'SLIIT Malabe',
+    contactNumber: '+94-77-111-1001',
+  },
+  {
+    id: 'r2',
+    name: 'Maya Silva',
+    vehicleType: 'EV Hatchback',
+    vehicleNumber: 'EV-2284',
+    seatCount: 2,
+    rating: 4.8,
+    etaMinutes: 6,
+    distanceMeters: 640,
+    campus: 'SLIIT Metro',
+    contactNumber: '+94-77-111-1002',
+  },
+  {
+    id: 'r3',
+    name: 'Nimesh Fernando',
+    vehicleType: 'SUV',
+    vehicleNumber: 'SUV-8871',
+    seatCount: 4,
+    rating: 4.7,
+    etaMinutes: 7,
+    distanceMeters: 820,
+    campus: 'SLIIT Main Campus',
+    contactNumber: '+94-77-111-1003',
+  },
 ];
+
+function getRideId(ride) {
+  return ride?._id || ride?.id || '';
+}
+
+function toPoint(point, fallback = null) {
+  if (!point || typeof point.lat !== 'number' || typeof point.lng !== 'number') {
+    return fallback;
+  }
+
+  return {
+    lat: Number(point.lat),
+    lng: Number(point.lng),
+    addressText: point.addressText || '',
+  };
+}
 
 function deriveTrip(ride) {
   if (!ride) return null;
-  const startedAt = ride.startedAt || ride.requestedAt || new Date().toISOString();
+
+  const startedAt = ride.startedAt || ride.acceptedAt || ride.requestedAt || new Date().toISOString();
+
   return {
-    _id: `trip-${ride._id || ride.id}`,
+    _id: ride.tripId || `trip-${getRideId(ride)}`,
     status: ride.status,
     origin: ride.origin,
     destination: ride.destination,
@@ -50,9 +88,48 @@ function deriveTrip(ride) {
     distanceMeters: ride.distanceMeters || 0,
     expectedDurationSeconds: ride.expectedDurationSeconds || 0,
     startedAt,
-    bufferedDeadlineAt: new Date(Date.parse(startedAt) + (ride.expectedDurationSeconds || 0) * 1000 + 600000).toISOString(),
-    currentLocation: ride.origin,
+    currentLocation: ride.currentLocation || ride.origin,
   };
+}
+
+function etaMinutes(rider) {
+  const value = Number(rider?.etaMinutes || rider?.eta || rider?.arrivalMinutes || 0);
+  return Number.isFinite(value) && value > 0 ? value : 999;
+}
+
+function riderDistanceMeters(rider) {
+  const value = Number(rider?.distanceMeters || rider?.distance || 0);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function rankRiders(list = []) {
+  return [...list].sort(
+    (left, right) => etaMinutes(left) - etaMinutes(right) || riderDistanceMeters(left) - riderDistanceMeters(right)
+  );
+}
+
+function calculateFare(distanceMeters) {
+  const km = Math.max(0, Number(distanceMeters || 0) / 1000);
+  return Math.max(FARE_PER_KM, Math.round(km * FARE_PER_KM));
+}
+
+function formatLkr(value) {
+  return `LKR ${Number(value || 0).toLocaleString('en-LK')}`;
+}
+
+function formatEtaClock(seconds) {
+  if (!seconds) return 'N/A';
+  const etaDate = new Date(Date.now() + Number(seconds) * 1000);
+  return etaDate.toLocaleTimeString('en-LK', { hour: '2-digit', minute: '2-digit' });
+}
+
+function rideStatusText(status) {
+  if (status === 'requested') return 'Rider on the way';
+  if (status === 'accepted') return 'Rider accepted request';
+  if (status === 'started') return 'Trip started';
+  if (status === 'overdue') return 'Trip delayed';
+  if (status === 'completed') return 'Trip completed';
+  return 'Waiting for request';
 }
 
 const PassengerDashboardPage = () => {
@@ -60,47 +137,105 @@ const PassengerDashboardPage = () => {
   const { user, logout } = useAuth();
   const { calculateRoute, loading: routeLoading } = useMapRoute();
 
-  const [activeSection, setActiveSection] = useState('home');
-  const [searchForm, setSearchForm] = useState({ campusId: user?.campusId || CAMPUSES[0].id, femaleOnly: false });
-  const [pickupLocation, setPickupLocation] = useState(user?.pickupLocation?.lat ? user.pickupLocation : CAMPUSES[0].location);
-  const [destination, setDestination] = useState(CAMPUSES[0].location);
+  const [pickupLocation, setPickupLocation] = useState(
+    user?.pickupLocation?.lat ? user.pickupLocation : { ...CAMPUSES[0].location, addressText: 'Current location' }
+  );
+  const [campusId, setCampusId] = useState(user?.campusId || CAMPUSES[0].id);
   const [riders, setRiders] = useState([]);
-  const [selectedRider, setSelectedRider] = useState(null);
+  const [selectedRiderId, setSelectedRiderId] = useState('');
   const [rides, setRides] = useState([]);
   const [selectedRideDetail, setSelectedRideDetail] = useState(null);
-  const [notifications, setNotifications] = useState(fallbackNotifications);
-  const [favorites, setFavorites] = useState([{ id: 'f1', name: 'Hostel Gate', lat: 6.9181, lng: 79.9698 }]);
-  const [profileDraft, setProfileDraft] = useState({
-    name: user?.name || '',
-    contactNumber: user?.contactNumber || '',
-    emergencyName: user?.emergencyContact?.name || '',
-    emergencyPhone: user?.emergencyContact?.phone || '',
-  });
-  const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState([{ id: 'c1', from: 'rider', text: 'I am approaching your pickup.', time: 'Now' }]);
+  const [liveRiderLocation, setLiveRiderLocation] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [ratingModalOpen, setRatingModalOpen] = useState(false);
-  const [rating, setRating] = useState(5);
+  const [error, setError] = useState('');
+  const [adminPrompt, setAdminPrompt] = useState('');
+  const [overduePromptRideId, setOverduePromptRideId] = useState('');
+  const [sosBusy, setSosBusy] = useState(false);
 
-  const activeRide = useMemo(() => rides.find((ride) => ['requested', 'accepted', 'started', 'overdue'].includes(ride.status)) || null, [rides]);
-  const liveTrip = useMemo(() => selectedRideDetail?.trip || deriveTrip(activeRide), [selectedRideDetail?.trip, activeRide]);
-  const selectedCampus = useMemo(() => CAMPUSES.find((item) => item.id === searchForm.campusId) || CAMPUSES[0], [searchForm.campusId]);
+  const activeRide = useMemo(
+    () => rides.find((ride) => ['requested', 'accepted', 'started', 'overdue'].includes(ride.status)) || null,
+    [rides]
+  );
+
+  const selectedCampus = useMemo(
+    () => CAMPUSES.find((campus) => campus.id === campusId) || CAMPUSES[0],
+    [campusId]
+  );
+
+  const riderPool = riders.length > 0 ? riders : fallbackRiders;
+  const rankedRiders = useMemo(() => rankRiders(riderPool), [riderPool]);
+
+  const selectedRider = useMemo(() => {
+    if (selectedRiderId) {
+      const exact = rankedRiders.find((item) => String(item.id || item._id) === String(selectedRiderId));
+      if (exact) {
+        return exact;
+      }
+    }
+
+    return rankedRiders[0] || null;
+  }, [rankedRiders, selectedRiderId]);
+
   const summaryRide = selectedRideDetail?.ride || activeRide;
-  const etaText = summaryRide ? formatDurationSeconds(summaryRide.expectedDurationSeconds) : `${selectedRider?.etaMinutes || 0} min`;
-  const durationText = summaryRide ? formatDurationSeconds(summaryRide.expectedDurationSeconds) : `${(selectedRider?.etaMinutes || 5) + 6} min`;
-  const distanceText = summaryRide ? formatDistanceMeters(summaryRide.distanceMeters) : formatDistanceMeters(selectedRider?.distanceMeters || 0);
+  const activeTrip = selectedRideDetail?.trip || deriveTrip(activeRide);
+  const activeTripId = activeTrip?._id || activeRide?.tripId || null;
+
+  const riderLocationPoint =
+    toPoint(liveRiderLocation) ||
+    toPoint(activeTrip?.currentLocation) ||
+    toPoint(summaryRide?.currentLocation) ||
+    toPoint(summaryRide?.origin);
+
+  const destinationPoint = toPoint(summaryRide?.destination, toPoint(selectedCampus.location));
+  const originPoint = toPoint(summaryRide?.origin, toPoint(pickupLocation));
+
+  const passengerPickedUp = ['started', 'overdue', 'completed'].includes(summaryRide?.status);
+  const distanceMeters = Number(summaryRide?.distanceMeters || selectedRider?.distanceMeters || 0);
+  const durationSeconds = Number(summaryRide?.expectedDurationSeconds || Math.max(480, etaMinutes(selectedRider) * 60 + 420));
+  const fareAmount = calculateFare(distanceMeters);
+
+  const etaToRider = selectedRider ? `${Math.max(1, etaMinutes(selectedRider))} min` : 'N/A';
+  const destinationEta = formatEtaClock(durationSeconds);
+  const statusLabel = rideStatusText(summaryRide?.status);
 
   useEffect(() => {
-    async function load() {
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setPickupLocation((previous) => ({
+          ...previous,
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          addressText: 'Current location',
+        }));
+      },
+      () => {
+        // Keep fallback location.
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 10000,
+      }
+    );
+  }, []);
+
+  useEffect(() => {
+    async function loadRides() {
       try {
         setLoading(true);
         const myRides = await listMyRideRequests();
         setRides(myRides);
+
         if (myRides[0]?._id) {
           const detail = await fetchRideById(myRides[0]._id);
           setSelectedRideDetail(detail);
+          if (detail?.trip?.currentLocation) {
+            setLiveRiderLocation(toPoint(detail.trip.currentLocation));
+          }
         }
       } catch {
         setRides([]);
@@ -108,380 +243,347 @@ const PassengerDashboardPage = () => {
         setLoading(false);
       }
     }
-    load();
+
+    loadRides();
   }, []);
 
-  const handleSearch = async () => {
+  useEffect(() => {
+    if (!selectedRider && rankedRiders[0]) {
+      setSelectedRiderId(String(rankedRiders[0].id || rankedRiders[0]._id));
+    }
+  }, [rankedRiders, selectedRider]);
+
+  useEffect(() => {
+    if (!activeTripId) {
+      return undefined;
+    }
+
+    joinTripRoom(activeTripId);
+
+    const unsubscribe = onTripLocation((payload) => {
+      if (String(payload.tripId) !== String(activeTripId)) {
+        return;
+      }
+
+      const nextLocation = {
+        lat: Number(payload.lat),
+        lng: Number(payload.lng),
+        addressText: payload.addressText || 'Rider live location',
+        updatedAt: payload.updatedAt,
+      };
+
+      setLiveRiderLocation(nextLocation);
+      setSelectedRideDetail((previous) => {
+        if (!previous) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          trip: {
+            ...(previous.trip || {}),
+            _id: previous.trip?._id || activeTripId,
+            currentLocation: nextLocation,
+          },
+        };
+      });
+    });
+
+    return () => {
+      leaveTripRoom(activeTripId);
+      unsubscribe?.();
+    };
+  }, [activeTripId]);
+
+  useEffect(() => {
+    if (!summaryRide || !['started', 'overdue'].includes(summaryRide.status)) {
+      setAdminPrompt('');
+      return;
+    }
+
+    const rideId = String(getRideId(summaryRide));
+
+    const checkOverdue = () => {
+      const startedAt = Date.parse(
+        activeTrip?.startedAt || summaryRide.startedAt || summaryRide.requestedAt || ''
+      );
+      const expectedMs = Number(summaryRide.expectedDurationSeconds || 0) * 1000;
+
+      if (!Number.isFinite(startedAt) || startedAt <= 0 || expectedMs <= 0) {
+        return;
+      }
+
+      const dueAt = startedAt + expectedMs + OVERDUE_BUFFER_MINUTES * 60 * 1000;
+
+      if (Date.now() <= dueAt || overduePromptRideId === rideId) {
+        return;
+      }
+
+      const message = 'Are You ok';
+      setAdminPrompt(message);
+      setOverduePromptRideId(rideId);
+
+      pushSafetyAlert({
+        type: 'overdue-check',
+        title: 'Overdue Ride Safety Check',
+        location: summaryRide.destination?.addressText || selectedCampus.name,
+        level: 'high',
+        message,
+        passengerName: user?.name || 'Passenger',
+      });
+    };
+
+    checkOverdue();
+    const timer = window.setInterval(checkOverdue, 15000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [activeTrip?.startedAt, overduePromptRideId, selectedCampus.name, summaryRide, user?.name]);
+
+  const handleSearchRiders = async () => {
     try {
       setLoading(true);
-      setError(null);
+      setError('');
       const found = await searchNearbyRiders({
-        campusId: searchForm.campusId,
+        campusId,
         lat: pickupLocation?.lat,
         lng: pickupLocation?.lng,
-        femaleOnly: searchForm.femaleOnly,
       });
-      setRiders(found);
-      if (found[0]) setSelectedRider(found[0]);
+
+      const ranked = rankRiders(found);
+      setRiders(ranked);
+      if (ranked[0]) {
+        setSelectedRiderId(String(ranked[0].id || ranked[0]._id));
+      }
     } catch {
-      setRiders(fallbackRiders);
-      setSelectedRider(fallbackRiders[0]);
-      setNotifications((prev) => [{ id: `n-${Date.now()}`, title: 'Offline Mode', detail: 'Showing cached rider cards while server reconnects.', time: 'Now' }, ...prev]);
+      const rankedFallback = rankRiders(fallbackRiders);
+      setRiders(rankedFallback);
+      setSelectedRiderId(String(rankedFallback[0].id || rankedFallback[0]._id));
     } finally {
       setLoading(false);
     }
   };
 
-  const requestRide = async () => {
-    setConfirmModalOpen(false);
-    if (!pickupLocation || !destination) {
+  const handleRequestRide = async () => {
+    if (!pickupLocation || !selectedCampus?.location) {
       setError('Pickup and destination are required.');
       return;
     }
 
     try {
       setLoading(true);
-      const routeData = await calculateRoute({ origin: pickupLocation, destination });
+      setError('');
+
+      const routeData = await calculateRoute({
+        origin: pickupLocation,
+        destination: selectedCampus.location,
+      });
+
       const ride = await createRideRequest({
         origin: pickupLocation,
-        destination,
-        campusId: searchForm.campusId,
-        riderId: selectedRider?.id,
-        femaleOnly: searchForm.femaleOnly,
+        destination: selectedCampus.location,
+        campusId,
+        riderId: selectedRider?.id || selectedRider?._id,
         seatCount: 1,
         ...routeData,
       });
-      const detail = await fetchRideById(ride._id || ride.id);
+
+      const detail = await fetchRideById(getRideId(ride));
       setSelectedRideDetail(detail);
+      if (detail?.trip?.currentLocation) {
+        setLiveRiderLocation(toPoint(detail.trip.currentLocation));
+      }
+
       const myRides = await listMyRideRequests();
       setRides(myRides);
-      setActiveSection('live');
     } catch {
       const localRide = {
         _id: `local-ride-${Date.now()}`,
         status: 'requested',
+        campusId,
+        riderId: selectedRider,
         origin: pickupLocation,
-        destination,
+        destination: selectedCampus.location,
         distanceMeters: selectedRider?.distanceMeters || 1800,
-        expectedDurationSeconds: Math.max(600, (selectedRider?.etaMinutes || 8) * 60 + 420),
+        expectedDurationSeconds: Math.max(600, etaMinutes(selectedRider) * 60 + 420),
         requestedAt: new Date().toISOString(),
       };
-      setRides((prev) => [localRide, ...prev]);
+
+      setRides((previous) => [localRide, ...previous]);
       setSelectedRideDetail({ ride: localRide, trip: deriveTrip(localRide) });
-      setActiveSection('live');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancelRide = async () => {
-    if (!activeRide) return;
-
-    try {
-      await cancelRideRequest(activeRide._id || activeRide.id);
-      const myRides = await listMyRideRequests();
-      setRides(myRides);
-    } catch {
-      setRides((prev) => prev.map((item) => ((item._id || item.id) === (activeRide._id || activeRide.id) ? { ...item, status: 'cancelled' } : item)));
-    }
-  };
-
-  const handleUnsafe = async () => {
-    if (!activeRide) return;
-
-    try {
-      await reportRiderUnsafe(activeRide._id || activeRide.id);
-    } catch {
-      // Fallback path intentionally silent.
+  const handleTriggerSos = async () => {
+    if (!summaryRide) {
+      setError('No active ride for SOS.');
+      return;
     }
 
-    setNotifications((prev) => [{ id: `n-${Date.now()}`, title: 'Safety Alert Sent', detail: 'Support and safety team has been notified.', time: 'Now' }, ...prev]);
-  };
+    setSosBusy(true);
 
-  const saveFavoritePickup = () => {
-    setFavorites((prev) => [...prev, { id: `fav-${Date.now()}`, name: `Favorite ${prev.length + 1}`, lat: pickupLocation.lat, lng: pickupLocation.lng }]);
-  };
+    try {
+      if (activeTripId) {
+        await sendTripSos(activeTripId);
+      }
+    } catch {
+      // Keep local alert flow.
+    }
 
-  const sendChat = () => {
-    if (!chatInput.trim()) return;
-    setChatMessages((prev) => [...prev, { id: `c-${Date.now()}`, from: 'passenger', text: chatInput.trim(), time: 'Now' }]);
-    setChatInput('');
+    pushSafetyAlert({
+      type: 'sos',
+      title: 'Passenger SOS Triggered',
+      location: summaryRide.origin?.addressText || summaryRide.destination?.addressText || 'Ride route',
+      level: 'critical',
+      message: 'Emergency SOS sent by passenger',
+      passengerName: user?.name || 'Passenger',
+    });
+
+    setSosBusy(false);
   };
 
   return (
-    <main className="page-shell neo-passenger-page">
-      <header className="panel neo-passenger-topbar">
-        <div>
-          <p className="neo-kicker">Smart Campus Mobility</p>
-          <h1>Passenger Dashboard</h1>
-          <p className="neo-subtext">Safe, intelligent, and modern student ride experience.</p>
-        </div>
-        <div className="neo-top-actions">
-          <button type="button" onClick={() => setActiveSection('request')}>Request</button>
-          <button type="button" onClick={() => setActiveSection('live')}>Live Ride</button>
-          <button type="button" onClick={() => setActiveSection('history')}>History</button>
-          <button type="button" onClick={() => setActiveSection('profile')}>Profile</button>
+    <main className="page-shell passenger-simple-page">
+      <header className="panel passenger-simple-header">
+        <p className="ride-simple-kicker">Stay-Go Ride Sharing</p>
+        <h1>Passenger Dashboard</h1>
+        <p className="ride-simple-subtext">Current location, fastest rider recommendation, and live trip safety.</p>
+        <div className="ride-simple-header-actions">
+          <AppButton variant="ghost" onClick={handleSearchRiders} disabled={loading}>
+            {loading ? 'Searching...' : 'Search Riders'}
+          </AppButton>
           <AppButton variant="danger" onClick={logout}>Logout</AppButton>
         </div>
       </header>
 
+      {loading ? <p className="ride-simple-subtext">Loading passenger dashboard...</p> : null}
       {error ? <p className="app-error">{error}</p> : null}
 
-      <div className="neo-passenger-layout">
-        <aside className="panel neo-passenger-sidebar">
-          <h3>Main Sections</h3>
-          <div className="neo-section-list">
-            {sections.map((section) => (
-              <button key={section.id} type="button" className={activeSection === section.id ? 'is-active' : ''} onClick={() => setActiveSection(section.id)}>
-                {section.label}
-              </button>
-            ))}
+      <section className="panel passenger-simple-map-card">
+        <div className="panel-head">
+          <h3>Live Passenger Map</h3>
+          <span className="workspace-chip">{statusLabel}</span>
+        </div>
+
+        <RideRouteMap
+          origin={originPoint}
+          destination={destinationPoint}
+          routeCoordinates={summaryRide?.routeGeometry || []}
+          riderLocation={riderLocationPoint}
+          passengerLocation={originPoint}
+          isPassengerPickedUp={passengerPickedUp}
+          showRiderTracking={Boolean(riderLocationPoint || selectedRider)}
+        />
+
+        <p className="ride-simple-subtext">
+          Current location: {pickupLocation.lat.toFixed(5)}, {pickupLocation.lng.toFixed(5)}
+        </p>
+      </section>
+
+      <section className="panel passenger-simple-search-card">
+        <div className="ride-simple-control-row">
+          <label className="app-field">
+            <span className="app-field-label">Destination Campus</span>
+            <select className="app-input" value={campusId} onChange={(event) => setCampusId(event.target.value)}>
+              {CAMPUSES.map((campus) => (
+                <option key={campus.id} value={campus.id}>{campus.name}</option>
+              ))}
+            </select>
+          </label>
+
+          <AppButton onClick={handleRequestRide} disabled={loading || routeLoading || !selectedRider}>
+            {loading || routeLoading ? 'Requesting...' : 'Request Ride'}
+          </AppButton>
+        </div>
+
+        <h3>Fastest Arriving Riders</h3>
+        <div className="passenger-simple-rider-list">
+          {rankedRiders.map((rider, index) => {
+            const riderId = String(rider.id || rider._id);
+            const selected = riderId === String(selectedRider?.id || selectedRider?._id || '');
+
+            return (
+              <article key={riderId} className={`passenger-simple-rider-item ${selected ? 'is-selected' : ''}`}>
+                <button type="button" className="passenger-simple-rider-select" onClick={() => setSelectedRiderId(riderId)}>
+                  <span className="neo-rank-badge">{index + 1}{index === 0 ? 'st' : index === 1 ? 'nd' : 'th'} fastest</span>
+                  <strong>{rider.name}</strong>
+                  <p>{rider.vehicleType} - {rider.vehicleNumber}</p>
+                  <div className="ride-simple-request-meta">
+                    <span>ETA {Math.max(1, etaMinutes(rider))} min</span>
+                    <span>{formatDistanceMeters(rider.distanceMeters)}</span>
+                    <span>Seats {rider.seatCount || 1}</span>
+                  </div>
+                </button>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="panel passenger-simple-trip-card">
+        <h3>Trip Details And Payment</h3>
+
+        <div className="ride-simple-passenger-card">
+          <div>
+            <span>Passenger</span>
+            <strong>{user?.name || 'Passenger'}</strong>
           </div>
-          <div className="neo-sos-card">
-            <p>Emergency Actions</p>
-            <strong>Student Safety Desk</strong>
-            <AppButton variant="danger" onClick={() => navigate(activeRide ? `/trip/active/${activeRide._id || activeRide.id}` : '/trip/history')}>
-              SOS Emergency
-            </AppButton>
-          </div>
-        </aside>
-
-        <section className="neo-passenger-content">
-          {(activeSection === 'home' || activeSection === 'request') ? (
-            <div className="neo-section-grid">
-              <article className="panel neo-glass-card">
-                <h3>Ride Search</h3>
-                <div className="form-grid two-col">
-                  <label className="app-field">
-                    <span className="app-field-label">Destination Campus</span>
-                    <select
-                      className="app-input"
-                      value={searchForm.campusId}
-                      onChange={(event) => {
-                        const campusId = event.target.value;
-                        setSearchForm((prev) => ({ ...prev, campusId }));
-                        const selected = CAMPUSES.find((item) => item.id === campusId);
-                        if (selected) setDestination(selected.location);
-                      }}
-                    >
-                      {CAMPUSES.map((campus) => (
-                        <option key={campus.id} value={campus.id}>{campus.name}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="app-field checkbox-field">
-                    <input type="checkbox" checked={searchForm.femaleOnly} onChange={(event) => setSearchForm((prev) => ({ ...prev, femaleOnly: event.target.checked }))} />
-                    <span>Female-only preference</span>
-                  </label>
-                </div>
-                <div className="button-row">
-                  <AppButton onClick={handleSearch} disabled={loading}>{loading ? 'Searching...' : 'Search Riders'}</AppButton>
-                  <AppButton variant="ghost" onClick={saveFavoritePickup}>Save Pickup</AppButton>
-                </div>
-                <div className="neo-summary-strip">
-                  <span>ETA: {etaText}</span>
-                  <span>Distance: {distanceText}</span>
-                  <span>Duration: {durationText}</span>
-                </div>
-              </article>
-
-              <article className="panel neo-glass-card neo-map-card">
-                <h3>Pickup Location Selector</h3>
-                <LocationPickerMap center={[pickupLocation.lat, pickupLocation.lng]} onSelect={(coords) => setPickupLocation({ ...coords, addressText: 'Selected pickup point' })} />
-                <p className="neo-subtext">Pickup: {pickupLocation.lat.toFixed(5)}, {pickupLocation.lng.toFixed(5)}</p>
-              </article>
-
-              <article className="panel neo-glass-card">
-                <h3>Available Rider Cards</h3>
-                <div className="neo-rider-grid">
-                  {(riders.length > 0 ? riders : fallbackRiders).map((rider) => {
-                    const riderId = rider.id || rider._id;
-                    const selected = (selectedRider?.id || selectedRider?._id) === riderId;
-                    const riderName = rider.name || 'Campus Rider';
-                    const initials = riderName.split(' ').map((s) => s[0]).join('').slice(0, 2).toUpperCase();
-
-                    return (
-                      <article className={`neo-rider-card ${selected ? 'is-selected' : ''}`} key={riderId}>
-                        <div className="neo-rider-head">
-                          <div className="neo-rider-avatar">{initials}</div>
-                          <div>
-                            <strong>{riderName}</strong>
-                            <p>{rider.vehicleType || 'Vehicle'} - {rider.vehicleNumber || 'N/A'}</p>
-                          </div>
-                        </div>
-                        <div className="neo-rider-meta">
-                          <span>Rating {Number(rider.rating || 4.8).toFixed(1)}</span>
-                          <span>Seats {rider.seatCount || 1}</span>
-                          <span>ETA {rider.etaMinutes || 6} min</span>
-                        </div>
-                        <AppButton variant={selected ? 'secondary' : 'primary'} onClick={() => setSelectedRider(rider)}>
-                          {selected ? 'Selected' : 'Select Rider'}
-                        </AppButton>
-                      </article>
-                    );
-                  })}
-                </div>
-                <div className="button-row">
-                  <AppButton onClick={() => setConfirmModalOpen(true)} disabled={loading || routeLoading}>
-                    {loading || routeLoading ? 'Requesting...' : 'Request Ride'}
-                  </AppButton>
-                </div>
-              </article>
-            </div>
-          ) : null}
-
-          {activeSection === 'live' ? (
-            <div className="neo-section-grid">
-              <article className="panel neo-glass-card neo-map-card">
-                <h3>Live Trip Status</h3>
-                <LiveTrackingMap trip={liveTrip} />
-              </article>
-              <article className="panel neo-glass-card">
-                <h3>Active Trip Tracker</h3>
-                <div className="neo-timeline">
-                  <span className={activeRide ? 'is-active' : ''}>Rider On The Way</span>
-                  <span className={['accepted', 'started', 'overdue', 'completed'].includes(activeRide?.status) ? 'is-active' : ''}>Rider Arrived</span>
-                  <span className={['started', 'overdue', 'completed'].includes(activeRide?.status) ? 'is-active' : ''}>Trip Started</span>
-                  <span className={activeRide?.status === 'overdue' ? 'is-danger' : ''}>Trip Delayed</span>
-                  <span className={activeRide?.status === 'completed' ? 'is-active' : ''}>Trip Completed</span>
-                </div>
-                <RideRouteMap origin={pickupLocation} destination={destination} routeCoordinates={selectedRideDetail?.ride?.routeGeometry || []} />
-                <div className="button-row">
-                  <AppButton variant="warning" onClick={handleUnsafe}>Report Unsafe</AppButton>
-                  <AppButton variant="danger" onClick={handleCancelRide}>Cancel Ride</AppButton>
-                </div>
-              </article>
-              <article className="panel neo-glass-card">
-                <h3>Chat With Rider</h3>
-                <div className="neo-chat-box">
-                  {chatMessages.map((msg) => (
-                    <p key={msg.id} className={msg.from === 'passenger' ? 'from-passenger' : 'from-rider'}>{msg.text}</p>
-                  ))}
-                </div>
-                <div className="button-row">
-                  <input className="app-input" value={chatInput} onChange={(event) => setChatInput(event.target.value)} placeholder="Message rider" />
-                  <AppButton onClick={sendChat}>Send</AppButton>
-                </div>
-              </article>
-            </div>
-          ) : null}
-
-          {activeSection === 'history' ? (
-            <article className="panel neo-glass-card">
-              <div className="panel-head">
-                <h3>Ride History</h3>
-                <AppButton variant="ghost" onClick={() => navigate('/trip/history')}>Open Full History</AppButton>
-              </div>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr><th>Route</th><th>Status</th><th>Distance</th><th>Duration</th></tr>
-                  </thead>
-                  <tbody>
-                    {rides.length === 0 ? <tr><td colSpan={4}>No rides yet</td></tr> : rides.map((ride) => (
-                      <tr key={ride._id || ride.id}>
-                        <td>{ride.origin?.addressText || 'Pickup'}{' -> '}{ride.destination?.addressText || 'Destination'}</td>
-                        <td>{ride.status}</td>
-                        <td>{formatDistanceMeters(ride.distanceMeters)}</td>
-                        <td>{formatDurationSeconds(ride.expectedDurationSeconds)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="button-row">
-                <AppButton variant="secondary" onClick={() => setRatingModalOpen(true)}>Trip Completion & Rating Modal</AppButton>
-              </div>
-            </article>
-          ) : null}
-
-          {activeSection === 'favorites' ? (
-            <article className="panel neo-glass-card">
-              <h3>Favorite Pickup Points</h3>
-              <div className="neo-rider-grid">
-                {favorites.map((point) => (
-                  <article key={point.id} className="neo-mini-card">
-                    <strong>{point.name}</strong>
-                    <p>{point.lat.toFixed(4)}, {point.lng.toFixed(4)}</p>
-                    <AppButton variant="ghost" onClick={() => setPickupLocation({ lat: point.lat, lng: point.lng, addressText: point.name })}>Use</AppButton>
-                  </article>
-                ))}
-              </div>
-            </article>
-          ) : null}
-
-          {activeSection === 'notifications' ? (
-            <article className="panel neo-glass-card">
-              <h3>Notifications</h3>
-              <div className="neo-notice-stack">
-                {notifications.map((item) => (
-                  <div className="neo-notice tone-info" key={item.id}><strong>{item.title}</strong><p>{item.detail}</p><small>{item.time}</small></div>
-                ))}
-              </div>
-            </article>
-          ) : null}
-
-          {activeSection === 'safety' ? (
-            <article className="panel neo-glass-card">
-              <h3>Support And Safety</h3>
-              <div className="neo-notice tone-warning"><strong>Overdue Ride Alert</strong><p>Auto escalation enabled for delayed trips.</p></div>
-              <div className="neo-notice tone-danger"><strong>Crash / Incident Notification Panel</strong><p>Incident feed is monitored in real time.</p></div>
-              <div className="button-row">
-                <AppButton variant="danger" onClick={() => navigate(activeRide ? `/trip/active/${activeRide._id || activeRide.id}` : '/trip/history')}>SOS Emergency Button</AppButton>
-                <AppButton variant="ghost">Emergency Contact</AppButton>
-              </div>
-            </article>
-          ) : null}
-
-          {activeSection === 'profile' ? (
-            <article className="panel neo-glass-card">
-              <h3>Profile Settings</h3>
-              <div className="form-grid two-col">
-                <AppInput label="Name" value={profileDraft.name} onChange={(event) => setProfileDraft((prev) => ({ ...prev, name: event.target.value }))} />
-                <AppInput label="Contact" value={profileDraft.contactNumber} onChange={(event) => setProfileDraft((prev) => ({ ...prev, contactNumber: event.target.value }))} />
-                <AppInput label="Emergency Name" value={profileDraft.emergencyName} onChange={(event) => setProfileDraft((prev) => ({ ...prev, emergencyName: event.target.value }))} />
-                <AppInput label="Emergency Phone" value={profileDraft.emergencyPhone} onChange={(event) => setProfileDraft((prev) => ({ ...prev, emergencyPhone: event.target.value }))} />
-              </div>
-              <div className="button-row"><AppButton>Save Settings</AppButton></div>
-            </article>
-          ) : null}
-        </section>
-      </div>
-
-      {confirmModalOpen ? (
-        <div className="neo-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="neo-modal-card">
-            <h3>Ride Request Confirmation Modal</h3>
-            <p>Pickup to {selectedCampus.name}. Confirm request?</p>
-            <div className="button-row">
-              <AppButton onClick={requestRide}>Confirm</AppButton>
-              <AppButton variant="ghost" onClick={() => setConfirmModalOpen(false)}>Cancel</AppButton>
-            </div>
+          <div>
+            <span>University</span>
+            <strong>{selectedCampus.name}</strong>
           </div>
         </div>
-      ) : null}
 
-      {ratingModalOpen ? (
-        <div className="neo-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="neo-modal-card">
-            <h3>Rate Completed Trip</h3>
-            <label className="app-field">
-              <span className="app-field-label">Rating</span>
-              <select className="app-input" value={rating} onChange={(event) => setRating(Number(event.target.value))}>
-                <option value={5}>5</option><option value={4}>4</option><option value={3}>3</option><option value={2}>2</option><option value={1}>1</option>
-              </select>
-            </label>
-            <div className="button-row">
-              <AppButton onClick={() => setRatingModalOpen(false)}>Submit Rating</AppButton>
-              <AppButton variant="ghost" onClick={() => setRatingModalOpen(false)}>Close</AppButton>
-            </div>
-          </div>
+        <div className="ride-simple-metric-grid">
+          <article>
+            <span>Rider ETA</span>
+            <strong>{etaToRider}</strong>
+            <small>Fastest rider ranking</small>
+          </article>
+          <article>
+            <span>Distance</span>
+            <strong>{formatDistanceMeters(distanceMeters)}</strong>
+            <small>{formatDurationSeconds(durationSeconds)}</small>
+          </article>
+          <article>
+            <span>Estimated Arrival</span>
+            <strong>{destinationEta}</strong>
+            <small>{statusLabel}</small>
+          </article>
         </div>
-      ) : null}
+
+        <article className="ride-simple-fare-card">
+          <span>Payment Rule</span>
+          <strong>LKR {FARE_PER_KM} / km</strong>
+          <small>Estimated payment to rider: {formatLkr(fareAmount)}</small>
+        </article>
+
+        {adminPrompt ? (
+          <div className="neo-notice tone-warning">
+            <strong>Admin Message</strong>
+            <p>{adminPrompt}</p>
+          </div>
+        ) : null}
+
+        <div className="button-row">
+          <AppButton variant="danger" onClick={handleTriggerSos} disabled={sosBusy || !summaryRide}>
+            {sosBusy ? 'Sending SOS...' : 'SOS Emergency'}
+          </AppButton>
+          {selectedRider?.contactNumber ? (
+            <a className="button app-button button-outline" href={`tel:${selectedRider.contactNumber}`}>
+              Call Rider
+            </a>
+          ) : null}
+          {summaryRide ? (
+            <AppButton variant="ghost" onClick={() => navigate('/trip/history')}>Ride History</AppButton>
+          ) : null}
+        </div>
+      </section>
     </main>
   );
 };
 
 export default PassengerDashboardPage;
-
-

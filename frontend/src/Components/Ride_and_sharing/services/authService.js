@@ -32,6 +32,14 @@ function shouldFallbackToLocal(error) {
 
 export async function loginUser(payload) {
   try {
+    const localData = await loginLocalUser(payload);
+    saveAuth(localData);
+    return localData;
+  } catch {
+    // Continue to remote auth when local credentials do not match.
+  }
+
+  try {
     const data = await login(payload);
     saveAuth(data);
     return data;
@@ -84,17 +92,16 @@ export async function registerPassengerUser(payload) {
 
 export async function fetchCurrentUser() {
   const auth = loadAuth();
+  const token = auth?.token;
+
+  if (isLocalToken(token)) {
+    return fetchLocalCurrentUser(token);
+  }
 
   try {
     const data = await getMe();
     return data.user;
   } catch (remoteError) {
-    const token = auth?.token;
-
-    if (isLocalToken(token)) {
-      return fetchLocalCurrentUser(token);
-    }
-
     if (shouldFallbackToLocal(remoteError) && auth?.user) {
       return auth.user;
     }

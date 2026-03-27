@@ -1,11 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getRiderProfile, updateRiderAvailability } from '../api/riderApi';
 import AppButton from '../components/common/AppButton';
-import AppInput from '../components/common/AppInput';
 import RideRouteMap from '../components/maps/RideRouteMap';
-import CrashReportForm from '../components/rider/CrashReportForm';
 import useAuth from '../hooks/useAuth';
-import { reportIncident } from '../services/incidentService';
 import { getTripRoute } from '../services/routeService';
 import {
   acceptRideRequest,
@@ -20,36 +17,21 @@ import {
   onTripLocation,
   updateTripLocation,
 } from '../services/trackingService';
+import { CAMPUSES } from '../utils/constants';
 import { formatDistanceMeters, formatDurationSeconds } from '../utils/formatters';
 
-const riderSections = [
-  { id: 'home', label: 'Home' },
-  { id: 'requests', label: 'Requests' },
-  { id: 'active', label: 'Live Ride' },
-  { id: 'history', label: 'History' },
-  { id: 'safety', label: 'Safety' },
-  { id: 'profile', label: 'Profile' },
-];
+const FARE_PER_KM = 100;
 
 const fallbackRequests = [
   {
-    _id: 'rq-local-1',
+    _id: 'rq-local-100',
     status: 'requested',
-    passengerId: { _id: 'p1', name: 'Rashmi Jay', contactNumber: '+94-77-900-1010' },
-    origin: { lat: 6.9151, lng: 79.971, addressText: 'Hostel Gate B' },
-    destination: { lat: 6.9143, lng: 79.9727, addressText: 'SLIIT Main Campus' },
-    distanceMeters: 1800,
-    expectedDurationSeconds: 900,
-    seatCount: 1,
-  },
-  {
-    _id: 'rq-local-2',
-    status: 'accepted',
-    passengerId: { _id: 'p2', name: 'Kavindu R', contactNumber: '+94-77-900-2020' },
-    origin: { lat: 6.9168, lng: 79.9692, addressText: 'Library Entrance' },
-    destination: { lat: 6.9127, lng: 79.8507, addressText: 'SLIIT Metro' },
-    distanceMeters: 4200,
-    expectedDurationSeconds: 1320,
+    campusId: 'campus-main',
+    passengerId: { _id: 'p100', name: 'Test Passenger', contactNumber: '+94-77-900-1000' },
+    origin: { lat: 6.9151, lng: 79.971, addressText: 'address2 123' },
+    destination: { lat: 6.9143, lng: 79.9727, addressText: 'Main Campus' },
+    distanceMeters: 125400,
+    expectedDurationSeconds: 8220,
     seatCount: 1,
   },
 ];
@@ -63,25 +45,90 @@ const EMPTY_ROUTE_PLAN = {
   dropoffDurationSeconds: 0,
 };
 
+const DROP_OFF_STATUSES = new Set(['started', 'overdue', 'completed']);
+
+function getRideId(ride) {
+  return ride?._id || ride?.id || '';
+}
+
 function toPoint(point, fallback = null) {
   if (!point || typeof point.lat !== 'number' || typeof point.lng !== 'number') {
     return fallback;
   }
 
   return {
-    lat: point.lat,
-    lng: point.lng,
+    lat: Number(point.lat),
+    lng: Number(point.lng),
     addressText: point.addressText || '',
   };
 }
 
-function fallbackRouteGeometry(origin, destination) {
-  if (!origin || !destination) return [];
+function fallbackRoute(origin, destination) {
+  if (!origin || !destination) {
+    return [];
+  }
 
   return [
     [origin.lat, origin.lng],
     [destination.lat, destination.lng],
   ];
+}
+
+function pointSignature(point) {
+  const normalized = toPoint(point);
+  if (!normalized) {
+    return '';
+  }
+
+  return `${normalized.lat.toFixed(5)},${normalized.lng.toFixed(5)}`;
+}
+
+function haversineMeters(a, b) {
+  if (!a || !b) return 0;
+
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const earthRadius = 6371000;
+  const deltaLat = toRadians(b.lat - a.lat);
+  const deltaLng = toRadians(b.lng - a.lng);
+  const lat1 = toRadians(a.lat);
+  const lat2 = toRadians(b.lat);
+
+  const h =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+
+  return 2 * earthRadius * Math.asin(Math.sqrt(h));
+}
+
+function calculateFare(distanceMeters) {
+  const km = Math.max(0, Number(distanceMeters || 0) / 1000);
+  return Math.max(FARE_PER_KM, Math.round(km * FARE_PER_KM));
+}
+
+function formatLkr(value) {
+  return `LKR ${Number(value || 0).toLocaleString('en-LK')}`;
+}
+
+function formatEtaClock(totalSeconds) {
+  if (!totalSeconds) return 'N/A';
+
+  const eta = new Date(Date.now() + Number(totalSeconds) * 1000);
+  return eta.toLocaleTimeString('en-LK', { hour: '2-digit', minute: '2-digit' });
+}
+
+function resolveUniversityName(ride) {
+  if (!ride) {
+    return 'University not selected';
+  }
+
+  if (ride.campusId) {
+    const campus = CAMPUSES.find((item) => item.id === ride.campusId);
+    if (campus) {
+      return campus.name;
+    }
+  }
+
+  return ride.destination?.addressText || 'Destination campus';
 }
 
 function normalizeStartedRide(ride, trip) {
@@ -94,9 +141,9 @@ function normalizeStartedRide(ride, trip) {
     origin: nextOrigin,
     destination: nextDestination,
     routeGeometry:
-      (Array.isArray(trip?.routeGeometry) && trip.routeGeometry.length > 0 && trip.routeGeometry) ||
+      (Array.isArray(trip?.routeGeometry) && trip.routeGeometry.length > 1 && trip.routeGeometry) ||
       ride?.routeGeometry ||
-      fallbackRouteGeometry(nextOrigin, nextDestination),
+      fallbackRoute(nextOrigin, nextDestination),
     distanceMeters: Number(trip?.distanceMeters || ride?.distanceMeters || 0),
     expectedDurationSeconds: Number(trip?.expectedDurationSeconds || ride?.expectedDurationSeconds || 0),
     currentLocation: toPoint(trip?.currentLocation, toPoint(ride?.currentLocation, nextOrigin)),
@@ -107,136 +154,155 @@ function normalizeStartedRide(ride, trip) {
 const RiderDashboardPage = () => {
   const { user, logout } = useAuth();
 
-  const [activeSection, setActiveSection] = useState('home');
   const [profile, setProfile] = useState(null);
   const [rides, setRides] = useState([]);
+  const [selectedRideId, setSelectedRideId] = useState('');
   const [activeTrip, setActiveTrip] = useState(null);
   const [activeTripId, setActiveTripId] = useState(null);
   const [riderLocation, setRiderLocation] = useState(null);
-  const [routeAnchor, setRouteAnchor] = useState(null);
   const [routePlan, setRoutePlan] = useState(EMPTY_ROUTE_PLAN);
   const [routeLoading, setRouteLoading] = useState(false);
   const [syncState, setSyncState] = useState('GPS standby');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [incidentModalOpen, setIncidentModalOpen] = useState(false);
-  const [profileDraft, setProfileDraft] = useState({
-    name: user?.name || '',
-    contactNumber: user?.contactNumber || '',
-    vehicleType: '',
-    vehicleNumber: '',
-  });
-  const [feedbackNotes, setFeedbackNotes] = useState('');
+  const error = '';
 
-  const locationSyncRef = useRef(0);
-  const riderLocationRef = useRef(null);
+  const lastSyncRef = useRef(0);
+  const [routeAnchor, setRouteAnchor] = useState(null);
+  const routeAnchorKeyRef = useRef('');
 
   const incomingRequests = useMemo(() => rides.filter((ride) => ride.status === 'requested'), [rides]);
-  const acceptedRides = useMemo(
+
+  const activeRides = useMemo(
     () => rides.filter((ride) => ['accepted', 'started', 'overdue'].includes(ride.status)),
     [rides]
   );
-  const currentRide = useMemo(() => activeTrip || acceptedRides[0] || null, [activeTrip, acceptedRides]);
 
-  const passengerPickedUp = ['started', 'overdue', 'completed'].includes(currentRide?.status);
+  const focusedRide = useMemo(() => {
+    if (activeTrip) {
+      return activeTrip;
+    }
+
+    if (selectedRideId) {
+      const selected = rides.find((ride) => String(getRideId(ride)) === String(selectedRideId));
+      if (selected) {
+        return selected;
+      }
+    }
+
+    return activeRides[0] || incomingRequests[0] || null;
+  }, [activeRides, activeTrip, incomingRequests, rides, selectedRideId]);
+
+  const riderAnchor =
+    toPoint(riderLocation) ||
+    toPoint(profile?.hostelLocation) ||
+    toPoint(user?.hostelLocation) ||
+    toPoint(focusedRide?.currentLocation) ||
+    toPoint(focusedRide?.origin);
+
+  const passengerPickedUp = DROP_OFF_STATUSES.has(focusedRide?.status);
+
+  const pickupDistanceMeters = Number(
+    passengerPickedUp
+      ? 0
+      : haversineMeters(riderAnchor, toPoint(focusedRide?.origin)) || routePlan.pickupDistanceMeters || 0
+  );
+  const destinationDistanceMeters = Number(routePlan.dropoffDistanceMeters || focusedRide?.distanceMeters || 0);
+  const pickupDurationSeconds = Number(routePlan.pickupDurationSeconds || 0);
+  const destinationDurationSeconds = Number(
+    routePlan.dropoffDurationSeconds || focusedRide?.expectedDurationSeconds || 0
+  );
+
+  const totalArrivalSeconds = passengerPickedUp
+    ? destinationDurationSeconds
+    : pickupDurationSeconds + destinationDurationSeconds;
+
+  const estimatedFare = calculateFare(destinationDistanceMeters);
+  const universityName = resolveUniversityName(focusedRide);
+
+  const flowMessage = !focusedRide
+    ? 'No request selected. Waiting for passenger ride requests.'
+    : focusedRide.status === 'requested'
+      ? 'Passenger request received. Accept to start pickup flow.'
+      : focusedRide.status === 'accepted'
+        ? 'Go to passenger location and press Confirm Pickup once passenger boards.'
+        : focusedRide.status === 'started'
+          ? 'Passenger onboard. Follow the fastest route to destination.'
+          : focusedRide.status === 'overdue'
+            ? 'Trip delayed. Keep route tracking and safety monitoring active.'
+            : 'Trip completed. Ready for the next request.';
+
+  const routeRequestKey = useMemo(() => {
+    const rideId = getRideId(focusedRide);
+    const originKey = pointSignature(focusedRide?.origin);
+    const destinationKey = pointSignature(focusedRide?.destination);
+
+    if (!rideId || !originKey || !destinationKey) {
+      return '';
+    }
+
+    const phase = DROP_OFF_STATUSES.has(focusedRide?.status) ? 'dropoff' : 'pickup';
+    return `${rideId}|${phase}|${originKey}|${destinationKey}`;
+  }, [
+    focusedRide?._id,
+    focusedRide?.destination?.lat,
+    focusedRide?.destination?.lng,
+    focusedRide?.id,
+    focusedRide?.origin?.lat,
+    focusedRide?.origin?.lng,
+    focusedRide?.status,
+  ]);
 
   useEffect(() => {
-    async function load() {
+    async function loadDashboard() {
       try {
         setLoading(true);
         const [profileData, ridesData] = await Promise.all([getRiderProfile(), listMyRideRequests()]);
+
         setProfile(profileData.user);
         setRides(ridesData);
-        setRiderLocation(toPoint(profileData.user?.hostelLocation, toPoint(ridesData[0]?.origin, null)));
-        setProfileDraft((prev) => ({
-          ...prev,
-          name: profileData.user?.name || prev.name,
-          contactNumber: profileData.user?.contactNumber || prev.contactNumber,
-          vehicleType: profileData.user?.vehicleType || '',
-          vehicleNumber: profileData.user?.vehicleNumber || '',
-        }));
+        setRiderLocation(toPoint(profileData.user?.hostelLocation, toPoint(ridesData[0]?.origin)));
       } catch {
         const fallbackProfile = {
           name: user?.name || 'Rider',
-          email: user?.email || 'rider@staygo.local',
-          contactNumber: user?.contactNumber || '+94-11-555-0200',
-          vehicleType: 'Sedan',
-          vehicleNumber: 'CAR-9812',
-          seatCount: 3,
-          isVerified: true,
           isOnline: true,
-          availability: 'online',
           hostelLocation: { lat: 6.9162, lng: 79.9741, addressText: 'Near SLIIT Malabe' },
         };
 
         setProfile(fallbackProfile);
         setRides(fallbackRequests);
-        setRiderLocation(fallbackProfile.hostelLocation);
-        setProfileDraft((prev) => ({
-          ...prev,
-          name: fallbackProfile.name,
-          contactNumber: fallbackProfile.contactNumber,
-          vehicleType: fallbackProfile.vehicleType,
-          vehicleNumber: fallbackProfile.vehicleNumber,
-        }));
+        setRiderLocation(toPoint(fallbackProfile.hostelLocation));
       } finally {
         setLoading(false);
       }
     }
 
-    load();
-  }, [user?.contactNumber, user?.email, user?.name]);
+    loadDashboard();
+  }, [user?.name]);
 
   const refreshRides = async () => {
     try {
-      const ridesData = await listMyRideRequests();
-      setRides(ridesData);
+      const list = await listMyRideRequests();
+      setRides(list);
     } catch {
-      // Keep fallback list in offline mode.
+      // Keep local list in offline mode.
     }
   };
 
-  const currentRideKey = currentRide?._id || currentRide?.id || null;
-
   useEffect(() => {
-    riderLocationRef.current = riderLocation;
-  }, [riderLocation]);
-
-  useEffect(() => {
-    if (!currentRideKey || !currentRide) {
-      setRouteAnchor(null);
-      return;
-    }
-
-    const nextAnchor =
-      toPoint(riderLocationRef.current) ||
-      toPoint(profile?.hostelLocation) ||
-      toPoint(user?.hostelLocation) ||
-      toPoint(currentRide.currentLocation) ||
-      toPoint(currentRide.origin);
-
-    setRouteAnchor(nextAnchor);
-  }, [currentRideKey, currentRide, profile?.hostelLocation, user?.hostelLocation]);
-
-  useEffect(() => {
-    if (!currentRide || !['started', 'overdue', 'completed'].includes(currentRide.status)) {
+    if (!focusedRide || !['started', 'overdue', 'completed'].includes(focusedRide.status)) {
       setActiveTripId(null);
       return;
     }
 
-    if (currentRide.tripId) {
-      setActiveTripId(currentRide.tripId);
-      return;
-    }
-
-    if (activeTripId) {
+    if (focusedRide.tripId) {
+      setActiveTripId(focusedRide.tripId);
       return;
     }
 
     let cancelled = false;
 
     async function resolveTrip() {
-      const rideId = currentRide._id || currentRide.id;
+      const rideId = getRideId(focusedRide);
       if (!rideId) return;
 
       try {
@@ -247,12 +313,12 @@ const RiderDashboardPage = () => {
         }
 
         setActiveTripId(detail.trip._id);
-        setActiveTrip((prev) => normalizeStartedRide(prev || currentRide, detail.trip));
+        setActiveTrip((prev) => normalizeStartedRide(prev || focusedRide, detail.trip));
         if (detail.trip.currentLocation) {
           setRiderLocation(toPoint(detail.trip.currentLocation));
         }
       } catch {
-        // Ignore and continue in local mode.
+        // Keep local mode.
       }
     }
 
@@ -261,7 +327,7 @@ const RiderDashboardPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [activeTripId, currentRide]);
+  }, [focusedRide?._id, focusedRide?.id, focusedRide?.status, focusedRide?.tripId]);
 
   useEffect(() => {
     if (!activeTripId) {
@@ -271,18 +337,20 @@ const RiderDashboardPage = () => {
     joinTripRoom(activeTripId);
 
     const unsubscribe = onTripLocation((payload) => {
-      if (String(payload.tripId) !== String(activeTripId)) return;
+      if (String(payload.tripId) !== String(activeTripId)) {
+        return;
+      }
 
       const nextLocation = {
         lat: Number(payload.lat),
         lng: Number(payload.lng),
-        addressText: payload.addressText || 'Live location update',
+        addressText: payload.addressText || 'Rider GPS',
         updatedAt: payload.updatedAt,
       };
 
       setRiderLocation(nextLocation);
-      setActiveTrip((prev) => (prev ? { ...prev, currentLocation: nextLocation } : prev));
       setSyncState('Live sync connected');
+      setActiveTrip((prev) => (prev ? { ...prev, currentLocation: nextLocation } : prev));
     });
 
     return () => {
@@ -292,7 +360,7 @@ const RiderDashboardPage = () => {
   }, [activeTripId]);
 
   useEffect(() => {
-    if (!currentRide || !navigator.geolocation) {
+    if (!focusedRide || !navigator.geolocation) {
       return undefined;
     }
 
@@ -312,12 +380,11 @@ const RiderDashboardPage = () => {
         }
 
         const now = Date.now();
-
-        if (now - locationSyncRef.current < 7000) {
+        if (now - lastSyncRef.current < 7000) {
           return;
         }
 
-        locationSyncRef.current = now;
+        lastSyncRef.current = now;
 
         try {
           await updateTripLocation(activeTripId, nextLocation);
@@ -326,72 +393,96 @@ const RiderDashboardPage = () => {
           setSyncState('Live sync pending');
         }
       },
-      () => {
-        setSyncState('GPS permission needed');
-      },
+      () => setSyncState('GPS permission needed'),
       {
         enableHighAccuracy: true,
-        maximumAge: 5000,
         timeout: 12000,
+        maximumAge: 5000,
       }
     );
 
     return () => {
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [activeTripId, currentRide]);
+  }, [activeTripId, Boolean(focusedRide)]);
 
   useEffect(() => {
-    if (!currentRide?.origin || !currentRide?.destination || !routeAnchor) {
+    if (!routeRequestKey) {
+      routeAnchorKeyRef.current = '';
+      setRouteAnchor(null);
       setRoutePlan(EMPTY_ROUTE_PLAN);
+      setRouteLoading(false);
+      return;
+    }
+
+    if (routeAnchorKeyRef.current === routeRequestKey) {
+      return;
+    }
+
+    const nextAnchor = riderAnchor || toPoint(focusedRide?.origin);
+    if (!nextAnchor) {
+      return;
+    }
+
+    routeAnchorKeyRef.current = routeRequestKey;
+    setRouteAnchor(nextAnchor);
+  }, [focusedRide?.origin?.addressText, focusedRide?.origin?.lat, focusedRide?.origin?.lng, riderAnchor, routeRequestKey]);
+
+  useEffect(() => {
+    const originPoint = toPoint(focusedRide?.origin);
+    const destinationPoint = toPoint(focusedRide?.destination);
+
+    if (!routeRequestKey || !originPoint || !destinationPoint || !routeAnchor) {
       return;
     }
 
     let cancelled = false;
+    const rideInDropoffPhase = DROP_OFF_STATUSES.has(focusedRide?.status);
 
     async function buildRoutePlan() {
       setRouteLoading(true);
 
-      const pickupFallback = fallbackRouteGeometry(routeAnchor, currentRide.origin);
-      const dropoffFallback =
-        Array.isArray(currentRide.routeGeometry) && currentRide.routeGeometry.length > 1
-          ? currentRide.routeGeometry
-          : fallbackRouteGeometry(currentRide.origin, currentRide.destination);
+      const pickupFallback = fallbackRoute(routeAnchor, originPoint);
+      const dropoffFallback = fallbackRoute(originPoint, destinationPoint);
 
       try {
         const [pickupData, dropoffData] = await Promise.all([
-          getTripRoute({ origin: routeAnchor, destination: currentRide.origin }),
-          getTripRoute({ origin: currentRide.origin, destination: currentRide.destination }),
+          rideInDropoffPhase ? Promise.resolve(null) : getTripRoute({ origin: routeAnchor, destination: originPoint }),
+          getTripRoute({ origin: originPoint, destination: destinationPoint }),
         ]);
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setRoutePlan({
           pickupRoute:
-            Array.isArray(pickupData.routeGeometry) && pickupData.routeGeometry.length > 1
+            Array.isArray(pickupData?.routeGeometry) && pickupData.routeGeometry.length > 1
               ? pickupData.routeGeometry
               : pickupFallback,
           dropoffRoute:
-            Array.isArray(dropoffData.routeGeometry) && dropoffData.routeGeometry.length > 1
+            Array.isArray(dropoffData?.routeGeometry) && dropoffData.routeGeometry.length > 1
               ? dropoffData.routeGeometry
               : dropoffFallback,
-          pickupDistanceMeters: Number(pickupData.distanceMeters || 0),
-          pickupDurationSeconds: Number(pickupData.expectedDurationSeconds || 0),
-          dropoffDistanceMeters: Number(dropoffData.distanceMeters || currentRide.distanceMeters || 0),
+          pickupDistanceMeters: Number(pickupData?.distanceMeters || haversineMeters(routeAnchor, originPoint) || 0),
+          pickupDurationSeconds: Number(pickupData?.expectedDurationSeconds || 0),
+          dropoffDistanceMeters: Number(dropoffData?.distanceMeters || focusedRide?.distanceMeters || 0),
           dropoffDurationSeconds: Number(
-            dropoffData.expectedDurationSeconds || currentRide.expectedDurationSeconds || 0
+            dropoffData?.expectedDurationSeconds || focusedRide?.expectedDurationSeconds || 0
           ),
         });
       } catch {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setRoutePlan({
           pickupRoute: pickupFallback,
           dropoffRoute: dropoffFallback,
-          pickupDistanceMeters: 0,
+          pickupDistanceMeters: haversineMeters(routeAnchor, originPoint),
           pickupDurationSeconds: 0,
-          dropoffDistanceMeters: Number(currentRide.distanceMeters || 0),
-          dropoffDurationSeconds: Number(currentRide.expectedDurationSeconds || 0),
+          dropoffDistanceMeters: Number(focusedRide?.distanceMeters || 0),
+          dropoffDurationSeconds: Number(focusedRide?.expectedDurationSeconds || 0),
         });
       } finally {
         if (!cancelled) {
@@ -406,17 +497,16 @@ const RiderDashboardPage = () => {
       cancelled = true;
     };
   }, [
-    currentRide?._id,
-    currentRide?.id,
-    currentRide?.origin,
-    currentRide?.destination,
-    currentRide?.routeGeometry,
-    currentRide?.distanceMeters,
-    currentRide?.expectedDurationSeconds,
+    focusedRide?.distanceMeters,
+    focusedRide?.expectedDurationSeconds,
+    focusedRide?.status,
     routeAnchor,
+    routeRequestKey,
   ]);
 
-  const handleToggleAvailability = async (nextOnline) => {
+  const handleToggleAvailability = async () => {
+    const nextOnline = !profile?.isOnline;
+
     try {
       const result = await updateRiderAvailability({
         isOnline: nextOnline,
@@ -424,344 +514,219 @@ const RiderDashboardPage = () => {
       });
       setProfile(result.user);
     } catch {
-      setProfile((prev) => ({
-        ...prev,
-        isOnline: nextOnline,
-        availability: nextOnline ? 'online' : 'offline',
-      }));
+      setProfile((prev) => ({ ...prev, isOnline: nextOnline }));
     }
   };
 
   const handleAccept = async (ride) => {
+    const rideId = getRideId(ride);
+    if (!rideId) return;
+
     try {
-      await acceptRideRequest(ride._id || ride.id);
+      await acceptRideRequest(rideId);
       await refreshRides();
-      setActiveSection('active');
     } catch {
       setRides((prev) =>
-        prev.map((item) =>
-          (item._id || item.id) === (ride._id || ride.id) ? { ...item, status: 'accepted' } : item
-        )
+        prev.map((item) => (String(getRideId(item)) === String(rideId) ? { ...item, status: 'accepted' } : item))
       );
-      setActiveSection('active');
     }
+
+    setSelectedRideId(String(rideId));
   };
 
-  const handleStart = async (ride) => {
+  const handleReject = (ride) => {
+    const rideId = getRideId(ride);
+    if (!rideId) return;
+
+    setRides((prev) =>
+      prev.map((item) => (String(getRideId(item)) === String(rideId) ? { ...item, status: 'rejected' } : item))
+    );
+  };
+
+  const handleConfirmPickup = async () => {
+    if (!focusedRide) return;
+
+    const rideId = getRideId(focusedRide);
+    if (!rideId) return;
+
     try {
-      const result = await startRideRequest(ride._id || ride.id);
-      const normalized = normalizeStartedRide(ride, result.trip);
+      const result = await startRideRequest(rideId);
+      const normalized = normalizeStartedRide(focusedRide, result.trip);
       setActiveTrip(normalized);
       setActiveTripId(result.trip?._id || null);
-      setRiderLocation(toPoint(result.trip?.currentLocation, toPoint(ride.origin)));
       await refreshRides();
     } catch {
-      const started = {
-        ...ride,
-        status: 'started',
-        currentLocation: toPoint(riderLocation, toPoint(ride.origin)),
-      };
-
+      const started = { ...focusedRide, status: 'started' };
       setActiveTrip(started);
       setRides((prev) =>
-        prev.map((item) =>
-          (item._id || item.id) === (ride._id || ride.id) ? { ...item, status: 'started' } : item
-        )
+        prev.map((item) => (String(getRideId(item)) === String(rideId) ? { ...item, status: 'started' } : item))
       );
     }
-
-    setActiveSection('active');
   };
 
-  const handleComplete = async (ride) => {
+  const handleCompleteTrip = async () => {
+    if (!focusedRide) return;
+
+    const rideId = getRideId(focusedRide);
+    if (!rideId) return;
+
     try {
-      await completeRideRequest(ride._id || ride.id);
+      await completeRideRequest(rideId);
       setActiveTrip(null);
       setActiveTripId(null);
       await refreshRides();
     } catch {
       setRides((prev) =>
-        prev.map((item) =>
-          (item._id || item.id) === (ride._id || ride.id) ? { ...item, status: 'completed' } : item
-        )
+        prev.map((item) => (String(getRideId(item)) === String(rideId) ? { ...item, status: 'completed' } : item))
       );
       setActiveTrip(null);
       setActiveTripId(null);
     }
-  };
-
-  const handleIncident = async (payload) => {
-    try {
-      await reportIncident(payload);
-    } catch {
-      setError('Incident saved in local mode and queued for sync.');
-    }
-    setIncidentModalOpen(false);
   };
 
   return (
-    <main className="page-shell neo-rider-page">
-      <header className="panel neo-rider-topbar">
-        <div>
-          <p className="neo-kicker">Stay-Go Ride Sharing</p>
-          <h1>Rider Dashboard</h1>
-          <p className="neo-subtext">Clean, mobile-friendly control for pickups, route tracking, and safety.</p>
-        </div>
-        <div className="neo-top-actions">
-          <button type="button" onClick={() => setActiveSection('requests')}>Requests</button>
-          <button type="button" onClick={() => setActiveSection('active')}>Live Ride</button>
-          <button type="button" onClick={() => setActiveSection('history')}>History</button>
+    <main className="page-shell ride-simple-page">
+      <header className="panel ride-simple-header">
+        <p className="ride-simple-kicker">Stay-Go Ride Sharing</p>
+        <h1>Rider Dashboard</h1>
+        <p className="ride-simple-subtext">Pickup confirmation, fastest route guidance, and fare visibility.</p>
+        <div className="ride-simple-header-actions">
+          <span className={`ride-simple-status-pill ${profile?.isOnline ? 'is-online' : 'is-offline'}`}>
+            {profile?.isOnline ? 'Online' : 'Offline'}
+          </span>
+          <span className="ride-simple-sync">{syncState}</span>
+          <AppButton variant="ghost" onClick={handleToggleAvailability}>
+            {profile?.isOnline ? 'Go Offline' : 'Go Online'}
+          </AppButton>
           <AppButton variant="danger" onClick={logout}>Logout</AppButton>
         </div>
       </header>
 
+      {loading ? <p className="ride-simple-subtext">Loading rider dashboard...</p> : null}
       {error ? <p className="app-error">{error}</p> : null}
-      {loading ? <p className="neo-subtext">Loading rider workspace...</p> : null}
 
-      <div className="neo-rider-layout">
-        <aside className="panel neo-rider-sidebar">
-          <h3>Navigation</h3>
-          <div className="neo-section-list">
-            {riderSections.map((section) => (
-              <button
-                key={section.id}
-                type="button"
-                className={activeSection === section.id ? 'is-active' : ''}
-                onClick={() => setActiveSection(section.id)}
-              >
-                {section.label}
-              </button>
-            ))}
-          </div>
+      <section className="panel ride-simple-map-card">
+        <div className="panel-head">
+          <h3>Live Rider Map</h3>
+          <span className="workspace-chip">Real-time sync</span>
+        </div>
 
-          <article className="neo-sos-card">
-            <p>Current Status</p>
-            <strong>{profile?.isOnline ? 'Online' : 'Offline'}</strong>
-            <small>{syncState}</small>
-            <AppButton onClick={() => handleToggleAvailability(!profile?.isOnline)}>
-              {profile?.isOnline ? 'Go Offline' : 'Go Online'}
-            </AppButton>
-          </article>
-        </aside>
+        {focusedRide ? (
+          <>
+            {routeLoading ? <p className="ride-simple-subtext">Calculating fastest route...</p> : null}
+            <RideRouteMap
+              origin={toPoint(focusedRide.origin)}
+              destination={toPoint(focusedRide.destination)}
+              riderLocation={toPoint(riderLocation, toPoint(focusedRide.origin))}
+              passengerLocation={toPoint(focusedRide.origin)}
+              pickupRouteCoordinates={routePlan.pickupRoute}
+              dropoffRouteCoordinates={routePlan.dropoffRoute}
+              isPassengerPickedUp={passengerPickedUp}
+              showRiderTracking
+            />
+          </>
+        ) : (
+          <p className="ride-simple-subtext">Accept a request to see passenger location and route guidance.</p>
+        )}
 
-        <section className="neo-rider-content">
-          {(activeSection === 'home' || activeSection === 'requests') ? (
-            <article className="panel neo-glass-card">
-              <h3>Incoming Ride Requests</h3>
-              <div className="neo-rider-grid">
-                {(incomingRequests.length > 0
-                  ? incomingRequests
-                  : fallbackRequests.filter((item) => item.status === 'requested')
-                ).map((ride) => (
-                  <article key={ride._id || ride.id} className="neo-rider-card">
+        <p className="ride-simple-flow-note">{flowMessage}</p>
+      </section>
+
+      <section className="panel ride-simple-request-card">
+        <h3>Incoming Ride Requests</h3>
+
+        {incomingRequests.length === 0 ? (
+          <p className="ride-simple-subtext">No pending passenger requests right now.</p>
+        ) : (
+          <div className="ride-simple-request-list">
+            {incomingRequests.map((ride) => {
+              const rideId = getRideId(ride);
+              const isSelected = String(rideId) === String(getRideId(focusedRide));
+
+              return (
+                <article key={rideId} className={`ride-simple-request-item ${isSelected ? 'is-selected' : ''}`}>
+                  <button type="button" className="ride-simple-request-select" onClick={() => setSelectedRideId(String(rideId))}>
                     <strong>{ride.passengerId?.name || 'Passenger'}</strong>
-                    <p>{ride.origin?.addressText || 'Pickup'} {' -> '} {ride.destination?.addressText || 'Campus'}</p>
-                    <div className="neo-rider-meta">
+                    <p>{ride.origin?.addressText || 'Pickup'} {' -> '} {ride.destination?.addressText || 'Destination'}</p>
+                    <div className="ride-simple-request-meta">
                       <span>{formatDistanceMeters(ride.distanceMeters)}</span>
                       <span>{formatDurationSeconds(ride.expectedDurationSeconds)}</span>
                       <span>Seats {ride.seatCount || 1}</span>
                     </div>
-                    <div className="button-row">
-                      <AppButton onClick={() => handleAccept(ride)}>Accept</AppButton>
-                      <AppButton variant="ghost">Reject</AppButton>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </article>
-          ) : null}
-
-          {(activeSection === 'home' || activeSection === 'active') ? (
-            <div className="neo-section-grid">
-              <article className="panel neo-glass-card neo-map-card">
-                <div className="panel-head">
-                  <h3>Live Rider Map</h3>
-                  <span className="workspace-chip">Real-time sync</span>
-                </div>
-                {currentRide ? (
-                  <>
-                    {routeLoading ? <p className="neo-subtext">Calculating fastest routes...</p> : null}
-                    <RideRouteMap
-                      origin={toPoint(currentRide.origin)}
-                      destination={toPoint(currentRide.destination)}
-                      riderLocation={toPoint(riderLocation, toPoint(currentRide.origin))}
-                      passengerLocation={toPoint(currentRide.origin)}
-                      pickupRouteCoordinates={routePlan.pickupRoute}
-                      dropoffRouteCoordinates={routePlan.dropoffRoute}
-                      isPassengerPickedUp={passengerPickedUp}
-                      showRiderTracking
-                    />
-                  </>
-                ) : (
-                  <p className="neo-subtext">Accept a request to see passenger location and fastest route guidance.</p>
-                )}
-              </article>
-
-              <article className="panel neo-glass-card">
-                <h3>Trip Overview</h3>
-                {currentRide ? (
-                  <>
-                    <p>Passenger: {currentRide.passengerId?.name || 'N/A'}</p>
-                    <p>Pickup: {currentRide.origin?.addressText || 'Not set'}</p>
-                    <p>Destination: {currentRide.destination?.addressText || 'Not set'}</p>
-                    <p>Status: {currentRide.status}</p>
-                    <div className="neo-summary-strip">
-                      <span>
-                        To Passenger: {formatDistanceMeters(routePlan.pickupDistanceMeters)} / {formatDurationSeconds(routePlan.pickupDurationSeconds)}
-                      </span>
-                      <span>
-                        To Campus: {formatDistanceMeters(routePlan.dropoffDistanceMeters || currentRide.distanceMeters)} / {formatDurationSeconds(routePlan.dropoffDurationSeconds || currentRide.expectedDurationSeconds)}
-                      </span>
-                      <span>{syncState}</span>
-                    </div>
-                    <div className="button-row">
-                      {currentRide.status === 'accepted' ? (
-                        <AppButton onClick={() => handleStart(currentRide)}>Start Trip</AppButton>
-                      ) : null}
-                      {currentRide.status === 'started' ? (
-                        <AppButton variant="success" onClick={() => handleComplete(currentRide)}>
-                          Complete Trip
-                        </AppButton>
-                      ) : null}
-                      <AppButton variant="warning" onClick={() => setIncidentModalOpen(true)}>
-                        Incident
-                      </AppButton>
-                      {currentRide.passengerId?.contactNumber ? (
-                        <a className="button app-button button-outline" href={`tel:${currentRide.passengerId.contactNumber}`}>
-                          Call Passenger
-                        </a>
-                      ) : null}
-                    </div>
-                  </>
-                ) : (
-                  <p className="neo-subtext">No active ride yet.</p>
-                )}
-              </article>
-            </div>
-          ) : null}
-
-          {activeSection === 'history' ? (
-            <article className="panel neo-glass-card">
-              <h3>Trip History</h3>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Passenger</th>
-                      <th>Route</th>
-                      <th>Status</th>
-                      <th>Duration</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rides.length === 0 ? (
-                      <tr>
-                        <td colSpan={4}>No trips yet</td>
-                      </tr>
-                    ) : (
-                      rides.map((ride) => (
-                        <tr key={ride._id || ride.id}>
-                          <td>{ride.passengerId?.name || 'Passenger'}</td>
-                          <td>
-                            {ride.origin?.addressText || 'Pickup'} {' -> '} {ride.destination?.addressText || 'Destination'}
-                          </td>
-                          <td>{ride.status}</td>
-                          <td>{formatDurationSeconds(ride.expectedDurationSeconds)}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </article>
-          ) : null}
-
-          {activeSection === 'safety' ? (
-            <article className="panel neo-glass-card">
-              <h3>Support And Safety</h3>
-              <div className="neo-notice tone-warning">
-                <strong>Delayed Trip Warning</strong>
-                <p>Trips over expected duration are auto-flagged for safety review.</p>
-              </div>
-              <div className="button-row">
-                <AppButton variant="danger" onClick={() => setIncidentModalOpen(true)}>
-                  Crash / Incident Report
-                </AppButton>
-                <AppButton variant="ghost">Contact Safety Desk</AppButton>
-              </div>
-            </article>
-          ) : null}
-
-          {activeSection === 'profile' ? (
-            <article className="panel neo-glass-card">
-              <h3>Profile Settings</h3>
-              <div className="form-grid two-col">
-                <AppInput
-                  label="Name"
-                  value={profileDraft.name}
-                  onChange={(event) => setProfileDraft((prev) => ({ ...prev, name: event.target.value }))}
-                />
-                <AppInput
-                  label="Contact"
-                  value={profileDraft.contactNumber}
-                  onChange={(event) =>
-                    setProfileDraft((prev) => ({ ...prev, contactNumber: event.target.value }))
-                  }
-                />
-                <AppInput
-                  label="Vehicle Type"
-                  value={profileDraft.vehicleType}
-                  onChange={(event) =>
-                    setProfileDraft((prev) => ({ ...prev, vehicleType: event.target.value }))
-                  }
-                />
-                <AppInput
-                  label="Vehicle Number"
-                  value={profileDraft.vehicleNumber}
-                  onChange={(event) =>
-                    setProfileDraft((prev) => ({ ...prev, vehicleNumber: event.target.value }))
-                  }
-                />
-              </div>
-              <AppInput
-                as="textarea"
-                label="Notes"
-                value={feedbackNotes}
-                onChange={(event) => setFeedbackNotes(event.target.value)}
-              />
-              <div className="button-row">
-                <AppButton>Save Profile</AppButton>
-              </div>
-            </article>
-          ) : null}
-        </section>
-      </div>
-
-      {incidentModalOpen ? (
-        <div className="neo-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="neo-modal-card">
-            <CrashReportForm
-              tripId={activeTripId || currentRide?._id || currentRide?.id || 'local-trip'}
-              defaultLocation={
-                toPoint(riderLocation, toPoint(currentRide?.origin, { lat: 0, lng: 0, addressText: '' }))
-              }
-              onSubmit={(payload) =>
-                handleIncident({
-                  ...payload,
-                  tripId: activeTripId || currentRide?._id || currentRide?.id || payload.tripId,
-                })
-              }
-            />
-            <div className="button-row">
-              <AppButton variant="ghost" onClick={() => setIncidentModalOpen(false)}>
-                Close
-              </AppButton>
-            </div>
+                  </button>
+                  <div className="button-row">
+                    <AppButton onClick={() => handleAccept(ride)}>Accept</AppButton>
+                    <AppButton variant="ghost" onClick={() => handleReject(ride)}>Reject</AppButton>
+                  </div>
+                </article>
+              );
+            })}
           </div>
-        </div>
-      ) : null}
+        )}
+      </section>
+
+      <section className="panel ride-simple-trip-card">
+        <h3>Trip Overview</h3>
+
+        {focusedRide ? (
+          <>
+            <div className="ride-simple-passenger-card">
+              <div>
+                <span>Passenger</span>
+                <strong>{focusedRide.passengerId?.name || 'N/A'}</strong>
+              </div>
+              <div>
+                <span>University</span>
+                <strong>{universityName}</strong>
+              </div>
+            </div>
+
+            <div className="ride-simple-metric-grid">
+              <article>
+                <span>To Passenger</span>
+                <strong>{formatDistanceMeters(pickupDistanceMeters)}</strong>
+                <small>{formatDurationSeconds(pickupDurationSeconds)}</small>
+              </article>
+              <article>
+                <span>To Destination</span>
+                <strong>{formatDistanceMeters(destinationDistanceMeters)}</strong>
+                <small>{formatDurationSeconds(destinationDurationSeconds)}</small>
+              </article>
+              <article>
+                <span>Estimated Arrival</span>
+                <strong>{formatEtaClock(totalArrivalSeconds)}</strong>
+                <small>{syncState}</small>
+              </article>
+            </div>
+
+            <article className="ride-simple-fare-card">
+              <span>Payment Rule</span>
+              <strong>LKR {FARE_PER_KM} / km</strong>
+              <small>Estimated payment: {formatLkr(estimatedFare)}</small>
+            </article>
+
+            <div className="button-row">
+              {focusedRide.status === 'accepted' ? (
+                <AppButton onClick={handleConfirmPickup}>Confirm Pickup</AppButton>
+              ) : null}
+              {focusedRide.status === 'started' ? (
+                <AppButton variant="success" onClick={handleCompleteTrip}>Complete Trip</AppButton>
+              ) : null}
+              {focusedRide.passengerId?.contactNumber ? (
+                <a className="button app-button button-outline" href={`tel:${focusedRide.passengerId.contactNumber}`}>
+                  Call Passenger
+                </a>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <p className="ride-simple-subtext">No active ride yet.</p>
+        )}
+      </section>
     </main>
   );
 };
 
 export default RiderDashboardPage;
+
+

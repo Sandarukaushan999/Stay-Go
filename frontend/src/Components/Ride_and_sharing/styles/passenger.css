@@ -395,3 +395,410 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+/* Rider + Passenger flow enhancements */
+.neo-topbar-centered {
+  margin-bottom: 12px;
+}
+
+.neo-topbar-title-center {
+  text-align: center;
+}
+
+.neo-map-card-expanded {
+  margin-top: 6px;
+}
+
+.neo-flow-strip {
+  margin-top: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(16, 19, 18, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--color-text);
+  font-size: 0.86rem;
+  font-weight: 700;
+  padding: 10px 12px;
+}
+
+.neo-live-stat-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.neo-live-stat-grid article {
+  border: 1px solid rgba(16, 19, 18, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.neo-live-stat-grid span {
+  font-size: 0.74rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.neo-live-stat-grid strong {
+  color: var(--color-text);
+}
+
+.neo-live-stat-grid small {
+  color: var(--color-muted);
+}
+
+.neo-passenger-uni-card {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.neo-passenger-uni-card > div {
+  border: 1px solid rgba(16, 19, 18, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.93);
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.neo-passenger-uni-card span {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.neo-fare-card {
+  border-radius: 12px;
+  border: 1px solid rgba(186, 249, 26, 0.55);
+  background: linear-gradient(135deg, rgba(186, 249, 26, 0.18), rgba(255, 255, 255, 0.9));
+  color: var(--color-text);
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.neo-fare-card span {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #4e5d2d;
+}
+
+.neo-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid rgba(135, 109, 255, 0.28);
+  background: rgba(135, 109, 255, 0.12);
+  color: #55439a;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 0 10px;
+  text-transform: lowercase;
+}
+
+.neo-progress-track {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(16, 19, 18, 0.12);
+  overflow: hidden;
+  margin: 12px 0;
+}
+
+.neo-progress-track span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(135, 109, 255, 0.9), rgba(186, 249, 26, 0.95));
+  transition: width 240ms ease;
+}
+
+@media (max-width: 719px) {
+  .neo-topbar-title-center {
+    text-align: left;
+  }
+
+  .neo-live-stat-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 720px) {
+  .neo-live-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .neo-passenger-uni-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Simplified Rider + Passenger dashboards (feature-only) */
+.ride-simple-page,
+.passenger-simple-page {
+  width: min(1100px, calc(100% - 16px));
+  display: grid;
+  gap: 12px;
+  padding-bottom: 18px;
+}
+
+.ride-simple-header,
+.passenger-simple-header {
+  display: grid;
+  gap: 10px;
+  text-align: center;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(16, 19, 18, 0.1);
+  background:
+    radial-gradient(circle at 90% 0%, rgba(186, 249, 26, 0.26), transparent 36%),
+    radial-gradient(circle at 10% 0%, rgba(135, 109, 255, 0.14), transparent 38%),
+    rgba(255, 255, 255, 0.94);
+}
+
+.ride-simple-kicker {
+  margin: 0;
+  color: var(--color-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.ride-simple-subtext {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.ride-simple-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.ride-simple-status-pill {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 800;
+  border: 1px solid rgba(16, 19, 18, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.ride-simple-status-pill.is-online {
+  border-color: rgba(91, 176, 52, 0.45);
+  color: #2f6f17;
+}
+
+.ride-simple-status-pill.is-offline {
+  border-color: rgba(217, 54, 54, 0.45);
+  color: #8b1b1b;
+}
+
+.ride-simple-sync {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  color: var(--color-text);
+  border: 1px solid rgba(16, 19, 18, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.ride-simple-map-card,
+.passenger-simple-map-card,
+.ride-simple-request-card,
+.ride-simple-trip-card,
+.passenger-simple-search-card,
+.passenger-simple-trip-card {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(16, 19, 18, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.ride-simple-map-card .map-container,
+.passenger-simple-map-card .map-container {
+  min-height: 300px;
+  border-radius: 14px;
+  border: 1px solid rgba(16, 19, 18, 0.12);
+  box-shadow: none;
+}
+
+.ride-simple-flow-note {
+  margin: 10px 0 0;
+  border-radius: 12px;
+  border: 1px solid rgba(16, 19, 18, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 12px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.ride-simple-request-list,
+.passenger-simple-rider-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ride-simple-request-item,
+.passenger-simple-rider-item {
+  border-radius: 14px;
+  border: 1px solid rgba(16, 19, 18, 0.12);
+  background: rgba(255, 255, 255, 0.93);
+  padding: 10px;
+}
+
+.ride-simple-request-item.is-selected,
+.passenger-simple-rider-item.is-selected {
+  border-color: rgba(186, 249, 26, 0.95);
+  box-shadow: 0 0 0 2px rgba(186, 249, 26, 0.2) inset;
+}
+
+.ride-simple-request-select,
+.passenger-simple-rider-select {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  display: grid;
+  gap: 6px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.ride-simple-request-select p,
+.passenger-simple-rider-select p {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.ride-simple-request-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ride-simple-request-meta span {
+  border-radius: 999px;
+  border: 1px solid rgba(16, 19, 18, 0.1);
+  background: rgba(255, 255, 255, 0.88);
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.ride-simple-passenger-card {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ride-simple-passenger-card > div {
+  border: 1px solid rgba(16, 19, 18, 0.1);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  display: grid;
+  gap: 4px;
+}
+
+.ride-simple-passenger-card span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  letter-spacing: 0.05em;
+}
+
+.ride-simple-metric-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.ride-simple-metric-grid article {
+  border-radius: 12px;
+  border: 1px solid rgba(16, 19, 18, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.ride-simple-metric-grid article span {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ride-simple-fare-card {
+  margin-top: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(186, 249, 26, 0.55);
+  background: linear-gradient(140deg, rgba(186, 249, 26, 0.2), rgba(255, 255, 255, 0.92));
+  color: var(--color-text);
+  padding: 11px;
+  display: grid;
+  gap: 4px;
+}
+
+.ride-simple-fare-card span {
+  font-size: 0.74rem;
+  color: #4f622a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ride-simple-control-row {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+@media (min-width: 740px) {
+  .ride-simple-metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ride-simple-passenger-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ride-simple-control-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  .ride-simple-request-list,
+  .passenger-simple-rider-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .ride-simple-map-card .map-container,
+  .passenger-simple-map-card .map-container {
+    min-height: 260px;
+  }
+}

@@ -10,6 +10,7 @@ import { CAMPUSES, LIVE_MAP_UNIVERSITIES } from '../utils/constants';
 import { loginSchema } from '../utils/validators';
 import bikeIconImage from '../../../assets/bike.png';
 import locationIconImage from '../../../assets/location.png';
+import { listSafetyAlerts, subscribeSafetyAlerts } from '../services/safetyAlertService';
 
 const overviewMetrics = [
   { label: 'Active Riders', value: '1,284', delta: '+14.6%' },
@@ -302,6 +303,7 @@ const RideSharingHomePage = () => {
   const sidebarRef = React.useRef(null);
   const [journeyProgress, setJourneyProgress] = React.useState(0);
   const [journeyOverlayFrame, setJourneyOverlayFrame] = React.useState({ left: 12, width: 300 });
+  const [liveEmergencyAlerts, setLiveEmergencyAlerts] = React.useState(() => listSafetyAlerts());
 
   const goToDashboardByRole = (role) => {
     if (role === 'admin') navigate('/');
@@ -473,6 +475,23 @@ const RideSharingHomePage = () => {
       }
     };
   }, [sidebarMode]);
+
+  React.useEffect(() => {
+    setLiveEmergencyAlerts(listSafetyAlerts());
+
+    const unsubscribe = subscribeSafetyAlerts((alert) => {
+      if (!alert) {
+        return;
+      }
+
+      setLiveEmergencyAlerts((previous) => [alert, ...previous.filter((item) => item.id !== alert.id)].slice(0, 8));
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, []);
+
   const dailyLabels = dailyRideActivity.map((item) => item.label);
   const totalPoints = dailyRideActivity.length;
   const chartBaseline = valueToY(0, DAILY_CHART);
@@ -501,6 +520,7 @@ const RideSharingHomePage = () => {
   const journeyBikePosition = 6 + journeyProgress * 88;
   const journeyBikeLift = Math.sin(journeyProgress * Math.PI * 2.5) * -2.5;
   const journeyLineProgress = Math.min(1, Math.max(0, journeyProgress));
+  const mergedEmergencyAlerts = React.useMemo(() => [...liveEmergencyAlerts, ...emergencyAlerts].slice(0, 8), [liveEmergencyAlerts]);
 
   return (
     <div className="ride-page" ref={ridePageRef}>
@@ -828,14 +848,15 @@ const RideSharingHomePage = () => {
               <article className="panel workspace-alerts-panel" id="safety-alerts">
                 <div className="panel-head">
                   <h3>Emergency Alerts</h3>
-                  <span className="workspace-alert-count">{emergencyAlerts.length}</span>
+                  <span className="workspace-alert-count">{mergedEmergencyAlerts.length}</span>
                 </div>
                 <div className="workspace-alert-list">
-                  {emergencyAlerts.map((alert) => (
+                  {mergedEmergencyAlerts.map((alert) => (
                     <article className="workspace-alert-item" key={`${alert.title}-${alert.location}`}>
                       <div>
                         <strong>{alert.title}</strong>
                         <p>{alert.location}</p>
+                        {alert.passengerName ? <small>Passenger: {alert.passengerName}</small> : null}
                       </div>
                       <div>
                         <span className={`workspace-severity severity-${alert.level}`}>{alert.level}</span>
