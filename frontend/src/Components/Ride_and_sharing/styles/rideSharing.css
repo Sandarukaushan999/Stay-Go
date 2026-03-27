@@ -112,6 +112,16 @@ textarea.app-input {
   box-shadow: 0 0 0 4px rgba(186, 249, 26, 0.12);
 }
 
+.app-input.is-invalid {
+  border-color: rgba(198, 35, 35, 0.9);
+  box-shadow: 0 0 0 3px rgba(198, 35, 35, 0.12);
+}
+
+.app-input.is-invalid:focus {
+  border-color: rgba(198, 35, 35, 0.95);
+  box-shadow: 0 0 0 4px rgba(198, 35, 35, 0.18);
+}
+
 .app-field-error,
 .app-error {
   color: #c62323;
@@ -1291,7 +1301,7 @@ th {
 .workspace-hero-panel {
   position: relative;
   padding-right: 102px;
-  padding-bottom: 94px;
+  padding-bottom: 74px;
 }
 
 .workspace-hero-tags {
@@ -1404,7 +1414,7 @@ th {
 @media (max-width: 760px) {
   .workspace-hero-panel {
     padding-right: 24px;
-    padding-bottom: 86px;
+    padding-bottom: 72px;
   }
 
   .workspace-back-home-button {
@@ -1418,7 +1428,7 @@ th {
 @media (max-width: 560px) {
   .workspace-hero-panel {
     padding-right: 20px;
-    padding-bottom: 78px;
+    padding-bottom: 66px;
   }
 
   .workspace-back-home-button {
@@ -1429,5 +1439,146 @@ th {
   .workspace-back-home-button svg {
     width: 20px;
     height: 20px;
+  }
+}
+
+/* Scroll journey animation */
+.ride-page {
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+}
+
+.workspace-page-shell {
+  position: relative;
+  z-index: 1;
+  padding-bottom: 150px;
+}
+
+.workspace-scroll-journey-background {
+  position: fixed;
+  bottom: 16px;
+  min-width: 220px;
+  pointer-events: none;
+  z-index: 8;
+  transition: left 180ms ease, width 180ms ease, bottom 180ms ease;
+}
+
+.workspace-scroll-journey {
+  --journey-bike-position: 6%;
+  --journey-bike-lift: 0px;
+  --journey-line-progress: 0;
+  --journey-track-inset: clamp(18px, 18%, 56px);
+  position: relative;
+  width: 100%;
+  height: 68px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.workspace-journey-line {
+  position: absolute;
+  top: 50%;
+  border-top-style: dashed;
+  border-top-width: 3px;
+  border-radius: 999px;
+}
+
+.workspace-journey-line-base {
+  left: calc(
+    var(--journey-track-inset) +
+    (var(--journey-line-progress) * (100% - (2 * var(--journey-track-inset))))
+  );
+  width: calc((1 - var(--journey-line-progress)) * (100% - (2 * var(--journey-track-inset))));
+  border-top-color: rgba(25, 35, 30, 0.64);
+  transform: translateY(-50%);
+}
+
+.workspace-journey-bike,
+.workspace-journey-target {
+  position: absolute;
+  top: 50%;
+  user-select: none;
+  pointer-events: none;
+}
+
+.workspace-journey-bike {
+  left: var(--journey-bike-position);
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  transform: translate(-50%, calc(-50% + var(--journey-bike-lift)));
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.28));
+  transition: left 110ms linear, transform 110ms linear;
+}
+
+.workspace-journey-target {
+  right: 14px;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  opacity: 1;
+  transform: translateY(-50%);
+  filter: drop-shadow(0 8px 12px rgba(4, 8, 6, 0.24));
+}
+
+@media (max-width: 980px) {
+  .workspace-page-shell {
+    padding-bottom: 138px;
+  }
+
+  .workspace-scroll-journey-background {
+    bottom: 14px;
+  }
+
+  .workspace-journey-bike,
+  .workspace-journey-target {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace-page-shell {
+    padding-bottom: 126px;
+  }
+
+  .workspace-scroll-journey {
+    height: 60px;
+  }
+
+  .workspace-journey-line {
+    border-top-width: 2.6px;
+  }
+
+  .workspace-journey-bike,
+  .workspace-journey-target {
+    width: 34px;
+    height: 34px;
+  }
+
+  .workspace-journey-target {
+    right: 8px;
+  }
+}
+
+@media (max-width: 560px) {
+  .workspace-page-shell {
+    padding-bottom: 112px;
+  }
+
+  .workspace-scroll-journey-background {
+    bottom: 10px;
+  }
+
+  .workspace-scroll-journey {
+    height: 54px;
+  }
+
+  .workspace-journey-bike,
+  .workspace-journey-target {
+    width: 30px;
+    height: 30px;
   }
 }

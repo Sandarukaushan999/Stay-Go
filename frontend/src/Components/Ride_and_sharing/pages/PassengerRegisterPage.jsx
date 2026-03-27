@@ -33,7 +33,7 @@ const PassengerRegisterPage = () => {
         {!submitError && error ? <p className="app-error">{error}</p> : null}
         {submitError ? (
           <div className="button-row">
-            <AppButton variant="ghost" onClick={() => navigate('/')}>
+            <AppButton variant="ghost" onClick={() => navigate('/login')}>
               Go To Login
             </AppButton>
           </div>

@@ -197,7 +197,7 @@ function App() {
     const nextHash = screenToHash[nextScreen] ?? '#home'
 
     if (window.location.hash !== nextHash) {
-      window.location.hash = nextHash
+      window.history.replaceState(null, '', nextHash)
     }
 
     setScreen(nextScreen)
@@ -226,7 +226,7 @@ function App() {
 
   if (screen === 'ride' || screen === 'login' || screen === 'register') {
     const initialPathByScreen = {
-      ride: '/',
+      ride: '/login',
       login: '/login',
       register: '/rider/register',
     }
@@ -258,4 +258,3 @@ function App() {
 }
 
 export default App
-

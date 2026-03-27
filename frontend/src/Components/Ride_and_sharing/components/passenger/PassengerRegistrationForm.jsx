@@ -19,6 +19,8 @@ const PassengerRegistrationForm = ({ onSubmit, submitting = false }) => {
     formState: { errors },
   } = useForm({
     resolver: zodResolver(passengerRegistrationSchema),
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     defaultValues: {
       name: '',
       email: '',
@@ -37,13 +39,23 @@ const PassengerRegistrationForm = ({ onSubmit, submitting = false }) => {
   const submitHandler = (values) => {
     onSubmit?.({
       ...values,
+      name: values.name.trim(),
+      email: values.email.trim(),
+      password: values.password,
+      contactNumber: values.contactNumber.trim(),
+      gender: values.gender.trim(),
+      address: values.address.trim(),
+      campusId: values.campusId,
+      studentId: values.studentId.trim(),
+      emergencyContactName: values.emergencyContactName.trim(),
+      emergencyContactPhone: values.emergencyContactPhone.trim(),
       pickupLocation: {
         ...pickupLocation,
-        addressText: values.address,
+        addressText: values.address.trim(),
       },
       emergencyContact: {
-        name: values.emergencyContactName,
-        phone: values.emergencyContactPhone,
+        name: values.emergencyContactName.trim(),
+        phone: values.emergencyContactPhone.trim(),
       },
     });
   };
@@ -72,8 +84,16 @@ const PassengerRegistrationForm = ({ onSubmit, submitting = false }) => {
         </select>
       </label>
       <AppInput label="Student ID" error={errors.studentId?.message} {...register('studentId')} />
-      <AppInput label="Emergency Contact Name" {...register('emergencyContactName')} />
-      <AppInput label="Emergency Contact Phone" {...register('emergencyContactPhone')} />
+      <AppInput
+        label="Emergency Contact Name"
+        error={errors.emergencyContactName?.message}
+        {...register('emergencyContactName')}
+      />
+      <AppInput
+        label="Emergency Contact Phone"
+        error={errors.emergencyContactPhone?.message}
+        {...register('emergencyContactPhone')}
+      />
 
       <div className="map-field">
         <h4>Select Pickup Location</h4>

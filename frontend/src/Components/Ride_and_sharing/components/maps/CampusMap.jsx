@@ -16,13 +16,13 @@ const campusMarkerIcon = L.icon({
   popupAnchor: [0, -30],
 });
 
-const CampusMap = ({ campuses = [], center = MAP_DEFAULTS.center }) => {
+const CampusMap = ({ campuses = [], center = MAP_DEFAULTS.center, zoom = MAP_DEFAULTS.zoom }) => {
   return (
-    <MapContainer center={center} zoom={13} className="map-container">
+    <MapContainer center={center} zoom={zoom} className="map-container">
       <TileLayer attribution={MAP_DEFAULTS.attribution} url={MAP_DEFAULTS.tileUrl} />
       {campuses.map((campus) => (
         <Marker key={campus.id} position={[campus.location.lat, campus.location.lng]} icon={campusMarkerIcon}>
-          <Popup>{campus.name}</Popup>
+          <Popup><strong>{campus.name}</strong><br />{campus.category ?? "University"}</Popup>
         </Marker>
       ))}
     </MapContainer>
@@ -30,3 +30,4 @@ const CampusMap = ({ campuses = [], center = MAP_DEFAULTS.center }) => {
 };
 
 export default CampusMap;
+

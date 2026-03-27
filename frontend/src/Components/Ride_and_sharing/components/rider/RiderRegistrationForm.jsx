@@ -19,6 +19,8 @@ const RiderRegistrationForm = ({ onSubmit, submitting = false }) => {
     formState: { errors },
   } = useForm({
     resolver: zodResolver(riderRegistrationSchema),
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     defaultValues: {
       name: '',
       email: '',
@@ -38,9 +40,19 @@ const RiderRegistrationForm = ({ onSubmit, submitting = false }) => {
   const submitHandler = (values) => {
     onSubmit?.({
       ...values,
+      name: values.name.trim(),
+      email: values.email.trim(),
+      password: values.password,
+      contactNumber: values.contactNumber.trim(),
+      gender: values.gender.trim(),
+      address: values.address.trim(),
+      campusId: values.campusId,
+      vehicleNumber: values.vehicleNumber.trim(),
+      vehicleType: values.vehicleType.trim(),
+      studentId: values.studentId.trim(),
       hostelLocation: {
         ...hostelLocation,
-        addressText: values.address,
+        addressText: values.address.trim(),
       },
     });
   };

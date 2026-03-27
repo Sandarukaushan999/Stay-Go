@@ -6,8 +6,10 @@ import AppButton from '../components/common/AppButton';
 import AppInput from '../components/common/AppInput';
 import CampusMap from '../components/maps/CampusMap';
 import useAuth from '../hooks/useAuth';
-import { CAMPUSES } from '../utils/constants';
+import { CAMPUSES, LIVE_MAP_UNIVERSITIES } from '../utils/constants';
 import { loginSchema } from '../utils/validators';
+import bikeIconImage from '../../../assets/bike.png';
+import locationIconImage from '../../../assets/location.png';
 
 const overviewMetrics = [
   { label: 'Active Riders', value: '1,284', delta: '+14.6%' },
@@ -296,9 +298,13 @@ const RideSharingHomePage = () => {
   const { login, user, error, isLoading } = useAuth();
   const [activeSidebarItem, setActiveSidebarItem] = React.useState('Dashboard');
   const [sidebarMode, setSidebarMode] = React.useState('full');
+  const ridePageRef = React.useRef(null);
+  const sidebarRef = React.useRef(null);
+  const [journeyProgress, setJourneyProgress] = React.useState(0);
+  const [journeyOverlayFrame, setJourneyOverlayFrame] = React.useState({ left: 12, width: 300 });
 
   const goToDashboardByRole = (role) => {
-    if (role === 'admin') navigate('/admin/dashboard');
+    if (role === 'admin') navigate('/');
     if (role === 'rider') navigate('/rider/dashboard');
     if (role === 'passenger') navigate('/passenger/dashboard');
   };
@@ -309,6 +315,8 @@ const RideSharingHomePage = () => {
     formState: { errors },
   } = useForm({
     resolver: zodResolver(loginSchema),
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     defaultValues: {
       email: 'rider@staygo.local',
       password: 'Rider@12345',
@@ -316,10 +324,17 @@ const RideSharingHomePage = () => {
   });
 
   const onSubmit = async (values) => {
-    const loggedInUser = await login(values);
+    try {
+      const loggedInUser = await login({
+        email: values.email.trim(),
+        password: values.password,
+      });
 
-    if (loggedInUser?.role) {
-      goToDashboardByRole(loggedInUser.role);
+      if (loggedInUser?.role) {
+        goToDashboardByRole(loggedInUser.role);
+      }
+    } catch {
+      // Error message is displayed from auth store.
     }
   };
 
@@ -353,6 +368,111 @@ const RideSharingHomePage = () => {
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  React.useEffect(() => {
+    const clampProgress = (value) => Math.min(1, Math.max(0, value));
+    let ticking = false;
+
+    const updateProgress = () => {
+      const pageNode = ridePageRef.current;
+
+      if (!pageNode) {
+        return;
+      }
+
+      const scrollTop = window.scrollY || window.pageYOffset || 0;
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      const sectionTop = pageNode.offsetTop;
+      const sectionHeight = pageNode.offsetHeight;
+      const animationStart = Math.max(0, sectionTop - viewportHeight * 0.2);
+      const animationDistance = Math.max(620, sectionHeight * 0.9);
+      const rawProgress = (scrollTop - animationStart) / animationDistance;
+      const nextProgress = clampProgress(rawProgress);
+
+      setJourneyProgress((previous) => {
+        if (Math.abs(previous - nextProgress) < 0.005) {
+          return previous;
+        }
+
+        return nextProgress;
+      });
+    };
+
+    const onScrollOrResize = () => {
+      if (ticking) {
+        return;
+      }
+
+      ticking = true;
+
+      window.requestAnimationFrame(() => {
+        updateProgress();
+        ticking = false;
+      });
+    };
+
+    updateProgress();
+
+    window.addEventListener('scroll', onScrollOrResize, { passive: true });
+    window.addEventListener('resize', onScrollOrResize);
+
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize);
+      window.removeEventListener('resize', onScrollOrResize);
+    };
+  }, []);
+  React.useEffect(() => {
+    const getFallbackWidth = () => (sidebarMode === 'icon' ? 220 : 300);
+
+    const updateOverlayFrame = () => {
+      const sidebarNode = sidebarRef.current;
+
+      if (!sidebarNode) {
+        const fallbackWidth = getFallbackWidth();
+        setJourneyOverlayFrame((previous) => {
+          if (Math.abs(previous.left - 12) < 0.5 && Math.abs(previous.width - fallbackWidth) < 0.5) {
+            return previous;
+          }
+
+          return { left: 12, width: fallbackWidth };
+        });
+        return;
+      }
+
+      const rect = sidebarNode.getBoundingClientRect();
+      const nextLeft = Math.max(8, rect.left);
+      const nextWidth = Math.max(getFallbackWidth(), rect.width);
+
+      setJourneyOverlayFrame((previous) => {
+        if (Math.abs(previous.left - nextLeft) < 0.5 && Math.abs(previous.width - nextWidth) < 0.5) {
+          return previous;
+        }
+
+        return { left: nextLeft, width: nextWidth };
+      });
+    };
+
+    updateOverlayFrame();
+
+    const onResize = () => {
+      window.requestAnimationFrame(updateOverlayFrame);
+    };
+
+    window.addEventListener('resize', onResize);
+
+    let resizeObserver;
+    if (typeof ResizeObserver !== 'undefined' && sidebarRef.current) {
+      resizeObserver = new ResizeObserver(() => updateOverlayFrame());
+      resizeObserver.observe(sidebarRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', onResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
+  }, [sidebarMode]);
   const dailyLabels = dailyRideActivity.map((item) => item.label);
   const totalPoints = dailyRideActivity.length;
   const chartBaseline = valueToY(0, DAILY_CHART);
@@ -378,12 +498,38 @@ const RideSharingHomePage = () => {
   const focusRidesY = valueToY(focusData.rides, DAILY_CHART);
   const focusPassengersY = valueToY(focusData.passengers, DAILY_CHART);
   const focusLeftPercent = ((focusX - DAILY_CHART.padding.left) / chartPlotWidth) * 100;
+  const journeyBikePosition = 6 + journeyProgress * 88;
+  const journeyBikeLift = Math.sin(journeyProgress * Math.PI * 2.5) * -2.5;
+  const journeyLineProgress = Math.min(1, Math.max(0, journeyProgress));
 
   return (
-    <div className="ride-page">
+    <div className="ride-page" ref={ridePageRef}>
+      <div
+        className="workspace-scroll-journey-background"
+        aria-hidden="true"
+        style={{
+          left: `${journeyOverlayFrame.left}px`,
+          width: `${journeyOverlayFrame.width}px`,
+        }}
+      >
+        <div
+          className="workspace-scroll-journey"
+          style={{
+            '--journey-bike-position': `${journeyBikePosition}%`,
+            '--journey-bike-lift': `${journeyBikeLift}px`,
+            '--journey-line-progress': journeyLineProgress.toFixed(3),
+          }}
+        >
+          <span className="workspace-journey-line workspace-journey-line-base" />
+
+          <img className="workspace-journey-bike" src={bikeIconImage} alt="" />
+          <img className="workspace-journey-target" src={locationIconImage} alt="" />
+        </div>
+      </div>
+
       <main className="page-shell workspace-page-shell">
         <div className={`workspace-layout ${sidebarMode === 'icon' ? 'is-icon-only' : 'is-expanded'}`}>
-          <aside className="panel workspace-sidebar" aria-label="Workspace navigation">
+          <aside className="panel workspace-sidebar" aria-label="Workspace navigation" ref={sidebarRef}>
             <div className="workspace-sidebar-toolbar">
               <p className="workspace-sidebar-mode-label">Navigation</p>
               <div className="workspace-sidebar-toggle-group" role="group" aria-label="Sidebar display mode">
@@ -449,7 +595,6 @@ const RideSharingHomePage = () => {
                   {user ? `Signed in: ${user.role}` : 'Guest mode'}
                 </span>
               </div>
-
               <button
                 className="workspace-back-home-button"
                 type="button"
@@ -512,7 +657,8 @@ const RideSharingHomePage = () => {
 
                 <section className="panel credentials-panel workspace-credentials-panel">
                   <h3>Seed Credentials</h3>
-                  <p>Admin: admin@gmail.com / admin123</p>
+                  <p>Admin: sandarukaushan999@gmail.com / Sklm@2001</p>
+                  <p>Admin (legacy): admin@gmail.com / admin123</p>
                   <p>Rider: rider@staygo.local / Rider@12345</p>
                   <p>Passenger: passenger@staygo.local / Passenger@12345</p>
                 </section>
@@ -676,7 +822,7 @@ const RideSharingHomePage = () => {
                     <span className="workspace-chip">Delayed</span>
                   </div>
                 </div>
-                <CampusMap campuses={CAMPUSES} center={[CAMPUSES[0].location.lat, CAMPUSES[0].location.lng]} />
+                <CampusMap campuses={LIVE_MAP_UNIVERSITIES} center={[7.8731, 80.7718]} zoom={7} />
               </article>
 
               <article className="panel workspace-alerts-panel" id="safety-alerts">
@@ -787,4 +933,3 @@ const RideSharingHomePage = () => {
 };
 
 export default RideSharingHomePage;
-
