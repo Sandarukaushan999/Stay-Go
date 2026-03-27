@@ -295,6 +295,7 @@ const RideSharingHomePage = () => {
   const navigate = useNavigate();
   const { login, user, error, isLoading } = useAuth();
   const [activeSidebarItem, setActiveSidebarItem] = React.useState('Dashboard');
+  const [sidebarMode, setSidebarMode] = React.useState('full');
 
   const goToDashboardByRole = (role) => {
     if (role === 'admin') navigate('/admin/dashboard');
@@ -337,6 +338,21 @@ const RideSharingHomePage = () => {
     }
   };
 
+  const handleBackToHome = () => {
+    if (window.location.hash !== '#home') {
+      window.location.hash = '#home';
+      return;
+    }
+
+    const homeTarget = document.getElementById('home');
+
+    if (homeTarget) {
+      homeTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const dailyLabels = dailyRideActivity.map((item) => item.label);
   const totalPoints = dailyRideActivity.length;
   const chartBaseline = valueToY(0, DAILY_CHART);
@@ -366,8 +382,32 @@ const RideSharingHomePage = () => {
   return (
     <div className="ride-page">
       <main className="page-shell workspace-page-shell">
-        <div className="workspace-layout">
+        <div className={`workspace-layout ${sidebarMode === 'icon' ? 'is-icon-only' : 'is-expanded'}`}>
           <aside className="panel workspace-sidebar" aria-label="Workspace navigation">
+            <div className="workspace-sidebar-toolbar">
+              <p className="workspace-sidebar-mode-label">Navigation</p>
+              <div className="workspace-sidebar-toggle-group" role="group" aria-label="Sidebar display mode">
+                <button
+                  className={`workspace-sidebar-toggle${sidebarMode === 'full' ? ' is-active' : ''}`}
+                  type="button"
+                  onClick={() => setSidebarMode('full')}
+                  title="Icon + Text mode"
+                  aria-label="Use icon and text sidebar"
+                >
+                  Both
+                </button>
+                <button
+                  className={`workspace-sidebar-toggle${sidebarMode === 'icon' ? ' is-active' : ''}`}
+                  type="button"
+                  onClick={() => setSidebarMode('icon')}
+                  title="Icons only mode"
+                  aria-label="Use icons only sidebar"
+                >
+                  Icons
+                </button>
+              </div>
+            </div>
+
             <div className="workspace-sidebar-body">
               {sidebarSections.map((section) => (
                 <section className="workspace-sidebar-group" key={section.title}>
@@ -380,9 +420,11 @@ const RideSharingHomePage = () => {
                         className={`workspace-sidebar-link${activeSidebarItem === item.label ? ' is-active' : ''}`}
                         type="button"
                         onClick={() => handleSidebarAction(item)}
+                        title={item.label}
+                        aria-label={item.label}
                       >
                         <SidebarIcon name={item.icon} />
-                        <span>{item.label}</span>
+                        <span className="workspace-sidebar-text">{item.label}</span>
                       </button>
                     ))}
                   </div>
@@ -407,6 +449,18 @@ const RideSharingHomePage = () => {
                   {user ? `Signed in: ${user.role}` : 'Guest mode'}
                 </span>
               </div>
+
+              <button
+                className="workspace-back-home-button"
+                type="button"
+                onClick={handleBackToHome}
+                title="Back to Home"
+                aria-label="Back to Home"
+              >
+                <svg viewBox="0 0 24 24" role="presentation" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5" />
+                </svg>
+              </button>
             </section>
 
             <section className="workspace-metric-grid">
@@ -733,3 +787,4 @@ const RideSharingHomePage = () => {
 };
 
 export default RideSharingHomePage;
+
