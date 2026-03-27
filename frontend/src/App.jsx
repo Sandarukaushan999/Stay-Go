@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
-import AuthPage from './Components/auth-page'
 import Home from './Components/home'
 import InfoPage from './Components/info-page'
-import RideSharing from './Components/ride&sharing'
+import RideSharingModule from './Components/Ride_and_sharing'
 
 const hashToScreen = {
   '#home': 'home',
@@ -28,11 +27,11 @@ const screenToHash = {
 
 function buildPrimaryNavItems(navigateTo) {
   return [
-    { label: 'Home', type: 'link', href: '#home' },
-    { label: 'Roommates', type: 'link', href: '#roommates' },
+    { label: 'Home', type: 'button', onClick: () => navigateTo('home') },
+    { label: 'Roommates', type: 'button', onClick: () => navigateTo('home', 'roommates') },
     { label: 'Rides', type: 'button', onClick: () => navigateTo('ride') },
-    { label: 'Maintenance', type: 'link', href: '#maintenance' },
-    { label: 'Dashboard', type: 'link', href: '#dashboard' },
+    { label: 'Maintenance', type: 'button', onClick: () => navigateTo('home', 'maintenance') },
+    { label: 'Dashboard', type: 'button', onClick: () => navigateTo('home', 'dashboard') },
   ]
 }
 
@@ -194,27 +193,45 @@ function App() {
     }
   }, [])
 
-  function navigateTo(nextScreen) {
+  function navigateTo(nextScreen, sectionId = null) {
     const nextHash = screenToHash[nextScreen] ?? '#home'
 
     if (window.location.hash !== nextHash) {
-      window.location.hash = nextHash
+      window.history.replaceState(null, '', nextHash)
     }
 
     setScreen(nextScreen)
+
+    if (nextScreen !== 'home') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
+    if (sectionId) {
+      requestAnimationFrame(() => {
+        const target = document.getElementById(sectionId)
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          return
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      })
+      return
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const primaryNavItems = buildPrimaryNavItems(navigateTo)
 
-  if (screen === 'ride') {
-    return (
-      <RideSharing
-        headerNavItems={primaryNavItems}
-        onNavigateHome={() => navigateTo('home')}
-        onNavigateToPage={navigateTo}
-      />
-    )
+  if (screen === 'ride' || screen === 'login' || screen === 'register') {
+    const initialPathByScreen = {
+      ride: '/login',
+      login: '/login',
+      register: '/rider/register',
+    }
+
+    return <RideSharingModule key={screen} initialPath={initialPathByScreen[screen] ?? '/'} />
   }
 
   if (pageCatalog[screen]) {
@@ -229,18 +246,6 @@ function App() {
     )
   }
 
-  if (screen === 'login' || screen === 'register') {
-    return (
-      <AuthPage
-        mode={screen}
-        headerNavItems={primaryNavItems}
-        onNavigateHome={() => navigateTo('home')}
-        onNavigateToRide={() => navigateTo('ride')}
-        onNavigateToPage={navigateTo}
-        onNavigateToAuth={navigateTo}
-      />
-    )
-  }
 
   return (
     <Home
