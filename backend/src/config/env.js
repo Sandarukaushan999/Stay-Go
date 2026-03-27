@@ -3,12 +3,16 @@ const dotenv = require('dotenv');
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
+const nodeEnv = process.env.NODE_ENV || 'development';
+
 const env = {
-  nodeEnv: process.env.NODE_ENV || 'development',
+  nodeEnv,
   port: Number(process.env.PORT || 5000),
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   mongoUri: process.env.MONGO_URI || '',
+  mongoFallbackUri: process.env.MONGO_FALLBACK_URI || '',
   mongoDbName: process.env.MONGO_DB_NAME || 'stayandgo',
+  useMemoryMongoFallback: process.env.USE_MEMORY_MONGO_FALLBACK === 'true',
   allowStartWithoutDb: process.env.ALLOW_START_WITHOUT_DB === 'true',
   jwtSecret: process.env.JWT_SECRET || 'change-me',
   jwtTtl: process.env.JWT_TTL || '7d',
@@ -21,6 +25,9 @@ const env = {
     ? process.env.DNS_SERVERS.split(',').map((item) => item.trim()).filter(Boolean)
     : [],
   forcePublicDnsLookup: process.env.FORCE_PUBLIC_DNS_LOOKUP !== 'false',
+  apiRateLimitWindowMs: Number(process.env.API_RATE_LIMIT_WINDOW_MS || 60_000),
+  apiRateLimitMax:
+    Number(process.env.API_RATE_LIMIT_MAX || 0) || (nodeEnv === 'production' ? 300 : 5000),
   adminSeed: {
     email: process.env.ADMIN_EMAIL || 'admin@staygo.local',
     password: process.env.ADMIN_PASSWORD || 'Admin@12345',

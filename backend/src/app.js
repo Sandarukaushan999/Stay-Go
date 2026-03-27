@@ -21,16 +21,17 @@ app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use(
-  '/api',
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 300,
-    standardHeaders: true,
-    legacyHeaders: false,
-  })
-);
+const apiLimiter = rateLimit({
+  windowMs: env.apiRateLimitWindowMs,
+  max: env.apiRateLimitMax,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: 'Too many requests. Please wait a moment and retry.',
+  },
+});
 
+app.use('/api', apiLimiter);
 app.use('/api', requireDbConnection);
 app.use('/api', apiRoutes);
 

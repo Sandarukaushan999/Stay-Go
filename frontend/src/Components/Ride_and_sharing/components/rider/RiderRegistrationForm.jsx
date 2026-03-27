@@ -8,7 +8,10 @@ import AppInput from '../common/AppInput';
 import LocationPickerMap from '../maps/LocationPickerMap';
 
 const RiderRegistrationForm = ({ onSubmit, submitting = false }) => {
-  const [hostelLocation, setHostelLocation] = useState({ lat: 7.2906, lng: 80.6337, addressText: 'Selected on map' });
+  const [hostelLocation, setHostelLocation] = useState({
+    ...CAMPUSES[0].location,
+    addressText: 'Selected on map',
+  });
 
   const {
     register,

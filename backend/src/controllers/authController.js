@@ -34,23 +34,21 @@ async function registerByRole(req, res) {
     return res.status(400).json({ message: 'name, email, password are required' });
   }
 
-  const existing = await User.findOne({ email: email.toLowerCase() });
-  if (existing) {
-    return res.status(409).json({ message: 'Email already registered' });
-  }
+  const normalizedEmail = email.toLowerCase().trim();
+  const existing = await User.findOne({ email: normalizedEmail });
 
   const passwordHash = await bcrypt.hash(password, 10);
   const basePayload = {
     role,
     name,
-    email: email.toLowerCase().trim(),
+    email: normalizedEmail,
     passwordHash,
     contactNumber: contactNumber || '',
     gender: gender || '',
     address: address || '',
     studentId: studentId || '',
     campusId: campusId || '',
-    isVerified: role === ROLES.PASSENGER,
+    isVerified: role === ROLES.PASSENGER ? true : false,
     isOnline: false,
   };
 
@@ -64,6 +62,36 @@ async function registerByRole(req, res) {
   if (role === ROLES.PASSENGER) {
     basePayload.pickupLocation = pickupLocation || { lat: 0, lng: 0, addressText: '' };
     basePayload.emergencyContact = emergencyContact || { name: '', phone: '' };
+  }
+
+  if (existing) {
+    if (existing.role !== role) {
+      return res.status(409).json({
+        message: `Email already registered as ${existing.role}. Please sign in with that role.`,
+      });
+    }
+
+    if (existing.isBlocked) {
+      return res.status(403).json({ message: 'Your account is blocked by admin' });
+    }
+
+    const wasVerified = Boolean(existing.isVerified);
+    Object.assign(existing, basePayload);
+
+    // Preserve manual verification status for riders across profile re-registration.
+    if (role === ROLES.RIDER) {
+      existing.isVerified = wasVerified;
+    }
+
+    await existing.save();
+
+    const token = generateAccessToken(existing);
+
+    return res.status(200).json({
+      token,
+      user: sanitizeUser(existing),
+      message: 'Existing account updated successfully.',
+    });
   }
 
   const user = await User.create(basePayload);

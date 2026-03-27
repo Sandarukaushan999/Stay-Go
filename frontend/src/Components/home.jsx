@@ -12,18 +12,26 @@ const valueSignals = [
   {
     title: 'Compatibility-first matching',
     description: 'Lifestyle, routine, and preference scoring before roommate decisions are made.',
+    actionLabel: 'Open Roommate Section',
+    actionTarget: { type: 'section', value: 'roommates' },
   },
   {
     title: 'Safer student rides',
     description: 'Verified drivers, live route visibility, and structured pickup control in one flow.',
+    actionLabel: 'Open Ride Module',
+    actionTarget: { type: 'ride' },
   },
   {
     title: 'Transparent hostel support',
     description: 'Maintenance tickets stay visible from reporting to final closure and rating.',
+    actionLabel: 'Open Maintenance Section',
+    actionTarget: { type: 'section', value: 'maintenance' },
   },
   {
     title: 'Role-based analytics',
     description: 'Admins monitor demand, ticket pressure, and safety activity across the platform.',
+    actionLabel: 'Open Dashboard Section',
+    actionTarget: { type: 'section', value: 'dashboard' },
   },
 ]
 
@@ -33,18 +41,24 @@ const valueCards = [
     title: 'Roommate Matching',
     description:
       'Find compatible roommates through lifestyle scoring, preference filters, and safe double opt-in approvals.',
+    actionLabel: 'Open Roommates',
+    actionTarget: { type: 'section', value: 'roommates' },
   },
   {
     code: 'RS',
     title: 'Ride Sharing + Live Tracking',
     description:
       'Coordinate campus rides with route-based suggestions, pickup logic, seat control, and real-time tracking.',
+    actionLabel: 'Open Ride Module',
+    actionTarget: { type: 'ride' },
   },
   {
     code: 'MT',
     title: 'Maintenance Tickets',
     description:
       'Submit issues digitally, follow every stage of the workflow, and rate service quality after resolution.',
+    actionLabel: 'Open Maintenance',
+    actionTarget: { type: 'section', value: 'maintenance' },
   },
 ]
 
@@ -89,21 +103,29 @@ const workflowSteps = [
     step: '01',
     title: 'Register as a verified student',
     description: 'Create a trusted identity with institution-backed verification and secure onboarding.',
+    actionLabel: 'Register Now',
+    actionTarget: { type: 'auth', value: 'register' },
   },
   {
     step: '02',
     title: 'Set your preferences and profile',
     description: 'Define living habits, travel patterns, hostel details, and service preferences.',
+    actionLabel: 'Open Setup Section',
+    actionTarget: { type: 'section', value: 'rides' },
   },
   {
     step: '03',
     title: 'Use the modules you need',
     description: 'Start matching, join or offer rides, and submit maintenance tickets from one interface.',
+    actionLabel: 'Open Ride Module',
+    actionTarget: { type: 'ride' },
   },
   {
     step: '04',
     title: 'Track everything in your dashboard',
     description: 'Review requests, notifications, history, safety updates, and operational insights.',
+    actionLabel: 'Open Dashboard',
+    actionTarget: { type: 'section', value: 'dashboard' },
   },
 ]
 
@@ -111,18 +133,26 @@ const roleCards = [
   {
     role: 'Student',
     summary: 'Find roommates, join rides, report issues, and manage personal activity from a single dashboard.',
+    actionLabel: 'Student Signup',
+    actionTarget: { type: 'auth', value: 'register' },
   },
   {
     role: 'Driver',
     summary: 'Offer rides, manage seat inventory, monitor requests, and track earnings cleanly.',
+    actionLabel: 'Open Ride Module',
+    actionTarget: { type: 'ride' },
   },
   {
     role: 'Technician / Staff',
     summary: 'Receive assigned tasks, update ticket stages, and keep service performance transparent.',
+    actionLabel: 'Open Maintenance',
+    actionTarget: { type: 'section', value: 'maintenance' },
   },
   {
     role: 'Admin',
     summary: 'Control users, view analytics, publish updates, and enforce platform-wide rules.',
+    actionLabel: 'Open Admin Insights',
+    actionTarget: { type: 'section', value: 'dashboard' },
   },
 ]
 
@@ -166,6 +196,37 @@ function SectionHeading({ eyebrow, title, description, center = false }) {
 }
 
 function Home({ headerNavItems, onNavigateToRide, onNavigateToPage, onNavigateToAuth }) {
+  function scrollToSection(sectionId) {
+    const targetElement = document.getElementById(sectionId)
+
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  function handleDirectNavigation(target) {
+    if (!target) return
+
+    if (target.type === 'ride') {
+      onNavigateToRide()
+      return
+    }
+
+    if (target.type === 'auth') {
+      onNavigateToAuth(target.value)
+      return
+    }
+
+    if (target.type === 'page') {
+      onNavigateToPage(target.value)
+      return
+    }
+
+    if (target.type === 'section') {
+      scrollToSection(target.value)
+    }
+  }
+
   const actionItems = [
     { label: 'Login', type: 'button', variant: 'button-ghost', onClick: () => onNavigateToAuth('login') },
     {
@@ -277,6 +338,13 @@ function Home({ headerNavItems, onNavigateToRide, onNavigateToPage, onNavigateTo
             <article className="signal-card" key={signal.title}>
               <strong>{signal.title}</strong>
               <p>{signal.description}</p>
+              <button
+                className="feature-action"
+                type="button"
+                onClick={() => handleDirectNavigation(signal.actionTarget)}
+              >
+                {signal.actionLabel}
+              </button>
             </article>
           ))}
         </section>
@@ -294,15 +362,13 @@ function Home({ headerNavItems, onNavigateToRide, onNavigateToPage, onNavigateTo
                 <span className="feature-code">{card.code}</span>
                 <h3>{card.title}</h3>
                 <p>{card.description}</p>
-                {card.code === 'RS' ? (
-                  <button
-                    className="feature-action"
-                    type="button"
-                    onClick={onNavigateToRide}
-                  >
-                    Go to ride screen
-                  </button>
-                ) : null}
+                <button
+                  className="feature-action"
+                  type="button"
+                  onClick={() => handleDirectNavigation(card.actionTarget)}
+                >
+                  {card.actionLabel}
+                </button>
               </article>
             ))}
           </div>
@@ -358,6 +424,13 @@ function Home({ headerNavItems, onNavigateToRide, onNavigateToPage, onNavigateTo
                 <span className="timeline-step">{item.step}</span>
                 <h3>{item.title}</h3>
                 <p>{item.description}</p>
+                <button
+                  className="feature-action"
+                  type="button"
+                  onClick={() => handleDirectNavigation(item.actionTarget)}
+                >
+                  {item.actionLabel}
+                </button>
               </article>
             ))}
           </div>
@@ -376,6 +449,13 @@ function Home({ headerNavItems, onNavigateToRide, onNavigateToPage, onNavigateTo
                 <p className="role-tag">{card.role}</p>
                 <h3>{card.role}</h3>
                 <p>{card.summary}</p>
+                <button
+                  className="feature-action"
+                  type="button"
+                  onClick={() => handleDirectNavigation(card.actionTarget)}
+                >
+                  {card.actionLabel}
+                </button>
               </article>
             ))}
           </div>

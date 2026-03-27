@@ -22,8 +22,8 @@ export const TRIP_STATUS = {
 };
 
 export const MAP_DEFAULTS = {
-  center: [7.2906, 80.6337],
-  zoom: 13,
+  center: [6.9143498, 79.972684],
+  zoom: 14,
   tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   attribution: '&copy; OpenStreetMap contributors',
 };
@@ -31,13 +31,21 @@ export const MAP_DEFAULTS = {
 export const CAMPUSES = [
   {
     id: 'campus-main',
-    name: 'Main Campus',
-    location: { lat: 7.2906, lng: 80.6337, addressText: 'Main Campus' },
+    name: 'SLIIT Malabe (Main Campus)',
+    location: {
+      lat: 6.9143498,
+      lng: 79.972684,
+      addressText: 'SLIIT, New Kandy Road, Malabe, Sri Lanka',
+    },
   },
   {
-    id: 'campus-tech',
-    name: 'Tech Campus',
-    location: { lat: 7.2753, lng: 80.6211, addressText: 'Tech Campus' },
+    id: 'campus-metro',
+    name: 'SLIIT Metropolitan Campus',
+    location: {
+      lat: 6.9126638,
+      lng: 79.8506854,
+      addressText: "Merchant Tower, St Michael's Road, Colombo 03, Sri Lanka",
+    },
   },
 ];
 
