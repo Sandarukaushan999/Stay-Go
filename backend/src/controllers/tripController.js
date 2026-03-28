@@ -13,6 +13,14 @@ function canAccessTrip(trip, user) {
   return false;
 }
 
+function normalizeSosMessage(message) {
+  if (typeof message !== 'string') {
+    return '';
+  }
+
+  return message.trim().slice(0, 180);
+}
+
 async function updateTripLocation(req, res) {
   if (req.user.role !== ROLES.RIDER) {
     return res.status(403).json({ message: 'Only riders can send location updates' });
@@ -97,7 +105,9 @@ async function getTripLive(req, res) {
 }
 
 async function triggerSos(req, res) {
-  const trip = await Trip.findById(req.params.id);
+  const trip = await Trip.findById(req.params.id)
+    .populate('passengerId', 'name emergencyContact')
+    .populate('riderId', 'name');
 
   if (!trip) {
     return res.status(404).json({ message: 'Trip not found' });
@@ -108,24 +118,48 @@ async function triggerSos(req, res) {
   }
 
   const senderRole = req.user.role;
+  const sosMessage = normalizeSosMessage(req.body?.message);
+  const passengerId = trip.passengerId?._id || trip.passengerId;
+  const riderId = trip.riderId?._id || trip.riderId;
+  const passengerName = trip.passengerId?.name || 'Passenger';
+  const riderName = trip.riderId?.name || 'Rider';
+  const location =
+    trip.currentLocation?.addressText ||
+    trip.origin?.addressText ||
+    trip.destination?.addressText ||
+    'Ride route';
+  const baseAdminMessage = `SOS received from ${senderRole} for trip ${trip._id}.`;
+  const adminMessage = sosMessage ? `${baseAdminMessage} Note: ${sosMessage}` : baseAdminMessage;
 
   await notifyAdmins({
     title: 'SOS Alert',
-    message: `SOS received from ${senderRole} for trip ${trip._id}.`,
+    message: adminMessage,
     type: 'safety.sos',
-    payload: { tripId: trip._id, senderRole },
+    payload: {
+      tripId: trip._id,
+      senderRole,
+      level: 'critical',
+      location,
+      passengerName,
+      riderName,
+      sosMessage,
+    },
   });
 
   if (senderRole === ROLES.PASSENGER) {
-    const passenger = await User.findById(trip.passengerId);
+    const passenger = passengerId ? await User.findById(passengerId) : null;
 
     await createNotification({
-      userId: trip.riderId,
+      userId: riderId,
       title: 'Passenger SOS Triggered',
-      message: 'Passenger triggered SOS. Please stop safely and contact support.',
+      message: sosMessage
+        ? `Passenger triggered SOS: "${sosMessage}". Please stop safely and contact support.`
+        : 'Passenger triggered SOS. Please stop safely and contact support.',
       type: 'safety.sos',
       payload: {
         tripId: trip._id,
+        location,
+        level: 'critical',
         emergencyContact: passenger?.emergencyContact || null,
       },
     });
@@ -133,12 +167,16 @@ async function triggerSos(req, res) {
 
   if (senderRole === ROLES.RIDER) {
     await createNotification({
-      userId: trip.passengerId,
+      userId: passengerId,
       title: 'Rider SOS Triggered',
-      message: 'Rider triggered SOS. Stay calm and wait for support updates.',
+      message: sosMessage
+        ? `Rider triggered SOS: "${sosMessage}". Stay calm and wait for support updates.`
+        : 'Rider triggered SOS. Stay calm and wait for support updates.',
       type: 'safety.sos',
       payload: {
         tripId: trip._id,
+        location,
+        level: 'critical',
       },
     });
   }

@@ -8,6 +8,7 @@ import {
   reportUnsafeBehavior,
   requestRide,
   startRide,
+  triggerRideSos,
 } from '../api/rideApi';
 
 export async function searchNearbyRiders(params) {
@@ -48,3 +49,8 @@ export async function cancelRideRequest(rideId) {
 export async function reportRiderUnsafe(rideId) {
   return reportUnsafeBehavior(rideId);
 }
+
+export async function triggerRideRequestSos(rideId, payload = {}) {
+  return triggerRideSos(rideId, payload);
+}
+

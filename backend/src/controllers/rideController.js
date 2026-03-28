@@ -29,6 +29,14 @@ function fallbackRoute(origin, destination) {
   };
 }
 
+function normalizeSosMessage(message) {
+  if (typeof message !== 'string') {
+    return '';
+  }
+
+  return message.trim().slice(0, 180);
+}
+
 async function createRideRequest(req, res) {
   if (req.user.role !== ROLES.PASSENGER) {
     return res.status(403).json({ message: 'Only passengers can request rides' });
@@ -399,6 +407,91 @@ async function reportUnsafeBehavior(req, res) {
   });
 }
 
+async function triggerRideSos(req, res) {
+  const ride = await RideRequest.findById(req.params.id)
+    .populate('passengerId', 'name emergencyContact')
+    .populate('riderId', 'name');
+
+  if (!ride) {
+    return res.status(404).json({ message: 'Ride request not found' });
+  }
+
+  if (!canAccessRide(ride, req.user)) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  const trip = await Trip.findOne({ rideRequestId: ride._id }).select('_id');
+  const senderRole = req.user.role;
+  const sosMessage = normalizeSosMessage(req.body?.message);
+  const location = ride.origin?.addressText || ride.destination?.addressText || 'Ride route';
+  const passengerName = ride.passengerId?.name || 'Passenger';
+  const riderName = ride.riderId?.name || 'Unassigned Rider';
+  const baseAdminMessage = trip
+    ? `SOS received from ${senderRole} for trip ${trip._id}.`
+    : `SOS received from ${senderRole} for ride request ${ride._id}.`;
+  const adminMessage = sosMessage ? `${baseAdminMessage} Note: ${sosMessage}` : baseAdminMessage;
+
+  await notifyAdmins({
+    title: 'SOS Alert',
+    message: adminMessage,
+    type: 'safety.sos',
+    payload: {
+      rideId: ride._id,
+      tripId: trip?._id || null,
+      senderRole,
+      level: 'critical',
+      location,
+      passengerName,
+      riderName,
+      sosMessage,
+    },
+  });
+
+  if (senderRole === ROLES.PASSENGER && ride.riderId) {
+    const riderId = ride.riderId?._id || ride.riderId;
+
+    await createNotification({
+      userId: riderId,
+      title: 'Passenger SOS Triggered',
+      message: sosMessage
+        ? `Passenger triggered SOS: "${sosMessage}". Please stop safely and contact support.`
+        : 'Passenger triggered SOS. Please stop safely and contact support.',
+      type: 'safety.sos',
+      payload: {
+        rideId: ride._id,
+        tripId: trip?._id || null,
+        location,
+        level: 'critical',
+        emergencyContact: ride.passengerId?.emergencyContact || null,
+      },
+    });
+  }
+
+  if (senderRole === ROLES.RIDER) {
+    const passengerId = ride.passengerId?._id || ride.passengerId;
+
+    await createNotification({
+      userId: passengerId,
+      title: 'Rider SOS Triggered',
+      message: sosMessage
+        ? `Rider triggered SOS: "${sosMessage}". Stay calm and wait for support updates.`
+        : 'Rider triggered SOS. Stay calm and wait for support updates.',
+      type: 'safety.sos',
+      payload: {
+        rideId: ride._id,
+        tripId: trip?._id || null,
+        location,
+        level: 'critical',
+      },
+    });
+  }
+
+  return res.json({
+    message: 'SOS alert sent successfully',
+    rideId: ride._id,
+    tripId: trip?._id || null,
+  });
+}
 async function getMyRideRequests(req, res) {
   let filter = {};
 
@@ -426,5 +519,7 @@ module.exports = {
   cancelRide,
   getRide,
   reportUnsafeBehavior,
+  triggerRideSos,
   getMyRideRequests,
 };
+

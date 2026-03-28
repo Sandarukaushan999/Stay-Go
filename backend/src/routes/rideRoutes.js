@@ -9,6 +9,7 @@ const {
   cancelRide,
   getRide,
   reportUnsafeBehavior,
+  triggerRideSos,
   getMyRideRequests,
 } = require('../controllers/rideController');
 const { requireAuth } = require('../middleware/auth');
@@ -26,5 +27,7 @@ router.post('/:id/start', asyncHandler(startRide));
 router.post('/:id/complete', asyncHandler(completeRide));
 router.post('/:id/cancel', asyncHandler(cancelRide));
 router.post('/:id/report-unsafe', asyncHandler(reportUnsafeBehavior));
+router.post('/:id/sos', asyncHandler(triggerRideSos));
 
 module.exports = router;
+

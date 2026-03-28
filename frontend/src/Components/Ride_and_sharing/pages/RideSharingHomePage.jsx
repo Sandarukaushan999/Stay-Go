@@ -11,6 +11,8 @@ import { loginSchema } from '../utils/validators';
 import bikeIconImage from '../../../assets/bike.png';
 import locationIconImage from '../../../assets/location.png';
 import { listSafetyAlerts, subscribeSafetyAlerts } from '../services/safetyAlertService';
+import { getMyNotifications } from '../services/notificationService';
+import { onNewNotification } from '../services/trackingService';
 
 const overviewMetrics = [
   { label: 'Active Riders', value: '1,284', delta: '+14.6%' },
@@ -242,6 +244,79 @@ function buildAreaPath(points, baselineY) {
   return `${curvePath} L ${last.x} ${baselineY} L ${first.x} ${baselineY} Z`;
 }
 
+function formatAlertRelativeTime(timestamp) {
+  const parsed = Date.parse(timestamp || '');
+
+  if (!Number.isFinite(parsed)) {
+    return 'Now';
+  }
+
+  const diffMs = Math.max(0, Date.now() - parsed);
+  const diffMinutes = Math.floor(diffMs / 60000);
+
+  if (diffMinutes < 1) {
+    return 'Now';
+  }
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes} min ago`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+
+  if (diffHours < 24) {
+    return `${diffHours} hr${diffHours === 1 ? '' : 's'} ago`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+}
+
+function alertLevelFromNotification(notification) {
+  const payload = notification?.payload || {};
+  const payloadLevel = String(payload.level || '').toLowerCase();
+
+  if (['critical', 'high', 'medium', 'low'].includes(payloadLevel)) {
+    return payloadLevel;
+  }
+
+  const type = String(notification?.type || '').toLowerCase();
+
+  if (type.includes('sos')) {
+    return 'critical';
+  }
+
+  if (type.includes('incident')) {
+    return 'high';
+  }
+
+  return 'medium';
+}
+
+function mapNotificationToEmergencyAlert(notification) {
+  if (!notification) {
+    return null;
+  }
+
+  const payload = notification?.payload || {};
+  const tripId = payload.tripId ? String(payload.tripId).slice(-8) : '';
+  const rideId = payload.rideId ? String(payload.rideId).slice(-8) : '';
+  const fallbackLocation =
+    payload.location ||
+    (tripId ? `Trip #${tripId}` : rideId ? `Ride #${rideId}` : 'Campus route');
+
+  return {
+    id: notification._id || notification.id || `alert-${tripId || rideId || Date.now()}`,
+    title: notification.title || 'Emergency Alert',
+    location: fallbackLocation,
+    level: alertLevelFromNotification(notification),
+    time: formatAlertRelativeTime(notification.createdAt),
+    message: String(payload.sosMessage || notification.message || '').trim(),
+    passengerName: payload.passengerName || '',
+    createdAt: notification.createdAt || new Date().toISOString(),
+  };
+}
+
 function SidebarIcon({ name }) {
   const iconMap = {
     dashboard: (
@@ -329,6 +404,7 @@ const RideSharingHomePage = () => {
   const [journeyProgress, setJourneyProgress] = React.useState(0);
   const [journeyOverlayFrame, setJourneyOverlayFrame] = React.useState({ left: 12, width: 300 });
   const [liveEmergencyAlerts, setLiveEmergencyAlerts] = React.useState(() => listSafetyAlerts());
+  const [serverEmergencyAlerts, setServerEmergencyAlerts] = React.useState([]);
   const [dailyRideActivity, setDailyRideActivity] = React.useState(() => initialDailyRideActivity);
 
   const goToDashboardByRole = (role) => {
@@ -519,6 +595,64 @@ const RideSharingHomePage = () => {
   }, []);
 
   React.useEffect(() => {
+    if (!user || user.role !== 'admin') {
+      setServerEmergencyAlerts([]);
+      return undefined;
+    }
+
+    let active = true;
+
+    const loadAdminEmergencyAlerts = async () => {
+      try {
+        const notifications = await getMyNotifications();
+
+        if (!active) {
+          return;
+        }
+
+        const mapped = notifications
+          .filter((notification) => {
+            const type = String(notification?.type || '').toLowerCase();
+            return type.includes('safety') || type.includes('incident') || type.includes('admin');
+          })
+          .map((notification) => mapNotificationToEmergencyAlert(notification))
+          .filter(Boolean);
+
+        setServerEmergencyAlerts(mapped.slice(0, 20));
+      } catch {
+        if (active) {
+          setServerEmergencyAlerts([]);
+        }
+      }
+    };
+
+    loadAdminEmergencyAlerts();
+
+    const unsubscribe = onNewNotification((notification) => {
+      if (!notification) {
+        return;
+      }
+
+      const mapped = mapNotificationToEmergencyAlert(notification);
+
+      if (!mapped) {
+        return;
+      }
+
+      setServerEmergencyAlerts((previous) =>
+        [mapped, ...previous.filter((item) => item.id !== mapped.id)].slice(0, 20)
+      );
+    });
+
+    const refreshTimer = window.setInterval(loadAdminEmergencyAlerts, 30000);
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+      window.clearInterval(refreshTimer);
+    };
+  }, [user?.id, user?.role]);
+  React.useEffect(() => {
     const timer = window.setInterval(() => {
       setDailyRideActivity((previous) => buildDummyDailyActivity(previous));
     }, 10000);
@@ -545,7 +679,23 @@ const RideSharingHomePage = () => {
   const journeyBikePosition = 6 + journeyProgress * 88;
   const journeyBikeLift = Math.sin(journeyProgress * Math.PI * 2.5) * -2.5;
   const journeyLineProgress = Math.min(1, Math.max(0, journeyProgress));
-  const mergedEmergencyAlerts = React.useMemo(() => [...liveEmergencyAlerts, ...emergencyAlerts].slice(0, 8), [liveEmergencyAlerts]);
+  const mergedEmergencyAlerts = React.useMemo(() => {
+    const seen = new Set();
+    const combined = [...serverEmergencyAlerts, ...liveEmergencyAlerts, ...emergencyAlerts];
+
+    return combined
+      .filter((alert) => {
+        const key = alert.id || `${alert.title}-${alert.location}-${alert.time}`;
+
+        if (seen.has(key)) {
+          return false;
+        }
+
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 8);
+  }, [serverEmergencyAlerts, liveEmergencyAlerts]);
 
   return (
     <div className="ride-page" ref={ridePageRef}>
@@ -861,11 +1011,12 @@ const RideSharingHomePage = () => {
                 </div>
                 <div className="workspace-alert-list">
                   {mergedEmergencyAlerts.map((alert) => (
-                    <article className="workspace-alert-item" key={`${alert.title}-${alert.location}`}>
+                    <article className="workspace-alert-item" key={alert.id || `${alert.title}-${alert.location}-${alert.time}`}>
                       <div>
                         <strong>{alert.title}</strong>
                         <p>{alert.location}</p>
                         {alert.passengerName ? <small>Passenger: {alert.passengerName}</small> : null}
+                        {alert.message ? <small>Note: {alert.message}</small> : null}
                       </div>
                       <div>
                         <span className={`workspace-severity severity-${alert.level}`}>{alert.level}</span>
@@ -963,6 +1114,4 @@ const RideSharingHomePage = () => {
 };
 
 export default RideSharingHomePage;
-
-
 

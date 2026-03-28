@@ -11,34 +11,56 @@ import AdminStatsCards from '../components/admin/AdminStatsCards';
 import RiderApprovalPanel from '../components/admin/RiderApprovalPanel';
 import SafetyAlertsPanel from '../components/admin/SafetyAlertsPanel';
 import TripsTable from '../components/admin/TripsTable';
+import { getMyNotifications } from '../services/notificationService';
+import { onNewNotification } from '../services/trackingService';
 
 const AdminDashboardPage = () => {
   const [stats, setStats] = useState(null);
   const [trips, setTrips] = useState([]);
   const [incidents, setIncidents] = useState([]);
   const [riders, setRiders] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const [statsData, tripsData, incidentsData, ridersData] = await Promise.all([
+        const [statsData, tripsData, incidentsData, ridersData, notificationsData] = await Promise.all([
           getAdminDashboard(),
           getAdminTrips(),
           getAdminIncidents(),
           getAdminRiders(),
+          getMyNotifications(),
         ]);
 
         setStats(statsData);
         setTrips(tripsData.trips || []);
         setIncidents(incidentsData.incidents || []);
         setRiders(ridersData.riders || []);
+        setNotifications(notificationsData || []);
       } catch (loadError) {
         setError(loadError.message);
       }
     }
 
     load();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onNewNotification((notification) => {
+      if (!notification) {
+        return;
+      }
+
+      setNotifications((previous) => [
+        notification,
+        ...previous.filter((item) => String(item._id || item.id) !== String(notification._id || notification.id)),
+      ]);
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
   }, []);
 
   const handleApprove = async (rider) => {
@@ -61,7 +83,7 @@ const AdminDashboardPage = () => {
       {error ? <p className="app-error">{error}</p> : null}
 
       <AdminStatsCards stats={stats} />
-      <SafetyAlertsPanel trips={trips} incidents={incidents} />
+      <SafetyAlertsPanel trips={trips} incidents={incidents} notifications={notifications} />
       <RiderApprovalPanel riders={riders} onApprove={handleApprove} />
 
       <section className="panel">

@@ -770,6 +770,26 @@
   letter-spacing: 0.05em;
 }
 
+
+.ride-simple-sos-field {
+  margin-top: 10px;
+}
+
+.ride-simple-sos-input {
+  min-height: 86px;
+  padding-top: 10px;
+  resize: vertical;
+}
+
+.ride-simple-sos-counter {
+  display: block;
+  margin-top: 6px;
+  text-align: right;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .ride-simple-control-row {
   display: grid;
   gap: 10px;
@@ -802,3 +822,4 @@
     min-height: 260px;
   }
 }
+

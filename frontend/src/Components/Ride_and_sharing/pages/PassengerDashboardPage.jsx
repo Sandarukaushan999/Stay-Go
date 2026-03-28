@@ -8,6 +8,7 @@ import {
   fetchRideById,
   listMyRideRequests,
   searchNearbyRiders,
+  triggerRideRequestSos,
 } from '../services/rideService';
 import { pushSafetyAlert } from '../services/safetyAlertService';
 import { joinTripRoom, leaveTripRoom, onTripLocation, sendTripSos } from '../services/trackingService';
@@ -16,6 +17,7 @@ import { formatDistanceMeters, formatDurationSeconds } from '../utils/formatters
 
 const FARE_PER_KM = 100;
 const OVERDUE_BUFFER_MINUTES = 10;
+const SOS_MESSAGE_MAX_LENGTH = 180;
 
 function getRideId(ride) {
   return ride?._id || ride?.id || '';
@@ -109,6 +111,7 @@ const PassengerDashboardPage = () => {
   const [adminPrompt, setAdminPrompt] = useState('');
   const [overduePromptRideId, setOverduePromptRideId] = useState('');
   const [sosBusy, setSosBusy] = useState(false);
+  const [sosMessage, setSosMessage] = useState('');
 
   const activeRide = useMemo(
     () => rides.find((ride) => ['requested', 'accepted', 'started', 'overdue'].includes(ride.status)) || null,
@@ -363,13 +366,19 @@ const PassengerDashboardPage = () => {
     }
 
     setSosBusy(true);
+    setError('');
+
+    const trimmedSosMessage = String(sosMessage || '').trim().slice(0, SOS_MESSAGE_MAX_LENGTH);
+    const rideId = getRideId(summaryRide);
 
     try {
       if (activeTripId) {
-        await sendTripSos(activeTripId);
+        await sendTripSos(activeTripId, { message: trimmedSosMessage });
+      } else if (rideId) {
+        await triggerRideRequestSos(rideId, { message: trimmedSosMessage });
       }
-    } catch {
-      // Keep local alert flow.
+    } catch (sosError) {
+      setError(sosError?.message || 'Unable to send SOS to server. Local alert was still created.');
     }
 
     pushSafetyAlert({
@@ -377,10 +386,11 @@ const PassengerDashboardPage = () => {
       title: 'Passenger SOS Triggered',
       location: summaryRide.origin?.addressText || summaryRide.destination?.addressText || 'Ride route',
       level: 'critical',
-      message: 'Emergency SOS sent by passenger',
+      message: trimmedSosMessage || 'Emergency SOS sent by passenger',
       passengerName: user?.name || 'Passenger',
     });
 
+    setSosMessage('');
     setSosBusy(false);
   };
 
@@ -506,6 +516,18 @@ const PassengerDashboardPage = () => {
             <p>{adminPrompt}</p>
           </div>
         ) : null}
+
+        <label className="app-field ride-simple-sos-field">
+          <span className="app-field-label">SOS Description (Optional)</span>
+          <textarea
+            className="app-input ride-simple-sos-input"
+            placeholder="Short emergency note for admin (optional)"
+            value={sosMessage}
+            maxLength={SOS_MESSAGE_MAX_LENGTH}
+            onChange={(event) => setSosMessage(event.target.value)}
+          />
+          <small className="ride-simple-sos-counter">{sosMessage.length}/{SOS_MESSAGE_MAX_LENGTH}</small>
+        </label>
 
         <div className="button-row">
           <AppButton variant="danger" onClick={handleTriggerSos} disabled={sosBusy || !summaryRide}>
