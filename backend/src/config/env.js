@@ -29,9 +29,9 @@ const env = {
   apiRateLimitMax:
     Number(process.env.API_RATE_LIMIT_MAX || 0) || (nodeEnv === 'production' ? 300 : 5000),
   adminSeed: {
-    email: process.env.ADMIN_EMAIL || 'admin@staygo.local',
-    password: process.env.ADMIN_PASSWORD || 'Admin@12345',
-    name: process.env.ADMIN_NAME || 'StayGo Admin',
+    email: process.env.ADMIN_EMAIL || 'sandarukaushan999@gmail.com',
+    password: process.env.ADMIN_PASSWORD || 'Sklm@2001',
+    name: process.env.ADMIN_NAME || 'Sandar Admin',
   },
   riderSeed: {
     email: process.env.SEED_RIDER_EMAIL || 'rider@staygo.local',
@@ -46,3 +46,4 @@ const env = {
 };
 
 module.exports = env;
+

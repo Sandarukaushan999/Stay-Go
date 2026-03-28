@@ -6,6 +6,7 @@ import useAuth from '../hooks/useAuth';
 import { getTripRoute } from '../services/routeService';
 import {
   acceptRideRequest,
+  cancelRideRequest,
   completeRideRequest,
   fetchRideById,
   listMyRideRequests,
@@ -21,20 +22,6 @@ import { CAMPUSES } from '../utils/constants';
 import { formatDistanceMeters, formatDurationSeconds } from '../utils/formatters';
 
 const FARE_PER_KM = 100;
-
-const fallbackRequests = [
-  {
-    _id: 'rq-local-100',
-    status: 'requested',
-    campusId: 'campus-main',
-    passengerId: { _id: 'p100', name: 'Test Passenger', contactNumber: '+94-77-900-1000' },
-    origin: { lat: 6.9151, lng: 79.971, addressText: 'address2 123' },
-    destination: { lat: 6.9143, lng: 79.9727, addressText: 'Main Campus' },
-    distanceMeters: 125400,
-    expectedDurationSeconds: 8220,
-    seatCount: 1,
-  },
-];
 
 const EMPTY_ROUTE_PLAN = {
   pickupRoute: [],
@@ -164,7 +151,7 @@ const RiderDashboardPage = () => {
   const [routeLoading, setRouteLoading] = useState(false);
   const [syncState, setSyncState] = useState('GPS standby');
   const [loading, setLoading] = useState(false);
-  const error = '';
+  const [error, setError] = useState('');
 
   const lastSyncRef = useRef(0);
   const [routeAnchor, setRouteAnchor] = useState(null);
@@ -256,21 +243,17 @@ const RiderDashboardPage = () => {
     async function loadDashboard() {
       try {
         setLoading(true);
+        setError('');
         const [profileData, ridesData] = await Promise.all([getRiderProfile(), listMyRideRequests()]);
 
         setProfile(profileData.user);
         setRides(ridesData);
         setRiderLocation(toPoint(profileData.user?.hostelLocation, toPoint(ridesData[0]?.origin)));
-      } catch {
-        const fallbackProfile = {
-          name: user?.name || 'Rider',
-          isOnline: true,
-          hostelLocation: { lat: 6.9162, lng: 79.9741, addressText: 'Near SLIIT Malabe' },
-        };
-
-        setProfile(fallbackProfile);
-        setRides(fallbackRequests);
-        setRiderLocation(toPoint(fallbackProfile.hostelLocation));
+      } catch (requestError) {
+        setError(requestError?.message || 'Unable to load rider dashboard.');
+        setProfile(null);
+        setRides([]);
+        setRiderLocation(null);
       } finally {
         setLoading(false);
       }
@@ -283,8 +266,8 @@ const RiderDashboardPage = () => {
     try {
       const list = await listMyRideRequests();
       setRides(list);
-    } catch {
-      // Keep local list in offline mode.
+    } catch (requestError) {
+      setError(requestError?.message || 'Unable to refresh ride requests.');
     }
   };
 
@@ -317,8 +300,8 @@ const RiderDashboardPage = () => {
         if (detail.trip.currentLocation) {
           setRiderLocation(toPoint(detail.trip.currentLocation));
         }
-      } catch {
-        // Keep local mode.
+      } catch (requestError) {
+        setError(requestError?.message || 'Unable to load trip details.');
       }
     }
 
@@ -513,8 +496,8 @@ const RiderDashboardPage = () => {
         availability: nextOnline ? 'online' : 'offline',
       });
       setProfile(result.user);
-    } catch {
-      setProfile((prev) => ({ ...prev, isOnline: nextOnline }));
+    } catch (requestError) {
+      setError(requestError?.message || 'Unable to update availability.');
     }
   };
 
@@ -525,22 +508,24 @@ const RiderDashboardPage = () => {
     try {
       await acceptRideRequest(rideId);
       await refreshRides();
-    } catch {
-      setRides((prev) =>
-        prev.map((item) => (String(getRideId(item)) === String(rideId) ? { ...item, status: 'accepted' } : item))
-      );
+    } catch (requestError) {
+      setError(requestError?.message || 'Unable to accept ride request.');
+      return;
     }
 
     setSelectedRideId(String(rideId));
   };
 
-  const handleReject = (ride) => {
+  const handleReject = async (ride) => {
     const rideId = getRideId(ride);
     if (!rideId) return;
 
-    setRides((prev) =>
-      prev.map((item) => (String(getRideId(item)) === String(rideId) ? { ...item, status: 'rejected' } : item))
-    );
+    try {
+      await cancelRideRequest(rideId);
+      await refreshRides();
+    } catch (requestError) {
+      setError(requestError?.message || 'Unable to reject ride request.');
+    }
   };
 
   const handleConfirmPickup = async () => {
@@ -555,12 +540,9 @@ const RiderDashboardPage = () => {
       setActiveTrip(normalized);
       setActiveTripId(result.trip?._id || null);
       await refreshRides();
-    } catch {
-      const started = { ...focusedRide, status: 'started' };
-      setActiveTrip(started);
-      setRides((prev) =>
-        prev.map((item) => (String(getRideId(item)) === String(rideId) ? { ...item, status: 'started' } : item))
-      );
+    } catch (requestError) {
+      setError(requestError?.message || 'Unable to start trip.');
+      return;
     }
   };
 
@@ -575,12 +557,9 @@ const RiderDashboardPage = () => {
       setActiveTrip(null);
       setActiveTripId(null);
       await refreshRides();
-    } catch {
-      setRides((prev) =>
-        prev.map((item) => (String(getRideId(item)) === String(rideId) ? { ...item, status: 'completed' } : item))
-      );
-      setActiveTrip(null);
-      setActiveTripId(null);
+    } catch (requestError) {
+      setError(requestError?.message || 'Unable to complete trip.');
+      return;
     }
   };
 
@@ -728,5 +707,4 @@ const RiderDashboardPage = () => {
 };
 
 export default RiderDashboardPage;
-
 

@@ -1,10 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppButton from '../components/common/AppButton';
-import LocationPickerMap from '../components/maps/LocationPickerMap';
 import RideRouteMap from '../components/maps/RideRouteMap';
 import useAuth from '../hooks/useAuth';
-import useMapRoute from '../hooks/useMapRoute';
 import {
   createRideRequest,
   fetchRideById,
@@ -18,45 +16,6 @@ import { formatDistanceMeters, formatDurationSeconds } from '../utils/formatters
 
 const FARE_PER_KM = 100;
 const OVERDUE_BUFFER_MINUTES = 10;
-
-const fallbackRiders = [
-  {
-    id: 'r1',
-    name: 'Aiden Perera',
-    vehicleType: 'Sedan',
-    vehicleNumber: 'CAB-3142',
-    seatCount: 3,
-    rating: 4.9,
-    etaMinutes: 4,
-    distanceMeters: 420,
-    campus: 'SLIIT Malabe',
-    contactNumber: '+94-77-111-1001',
-  },
-  {
-    id: 'r2',
-    name: 'Maya Silva',
-    vehicleType: 'EV Hatchback',
-    vehicleNumber: 'EV-2284',
-    seatCount: 2,
-    rating: 4.8,
-    etaMinutes: 6,
-    distanceMeters: 640,
-    campus: 'SLIIT Metro',
-    contactNumber: '+94-77-111-1002',
-  },
-  {
-    id: 'r3',
-    name: 'Nimesh Fernando',
-    vehicleType: 'SUV',
-    vehicleNumber: 'SUV-8871',
-    seatCount: 4,
-    rating: 4.7,
-    etaMinutes: 7,
-    distanceMeters: 820,
-    campus: 'SLIIT Main Campus',
-    contactNumber: '+94-77-111-1003',
-  },
-];
 
 function getRideId(ride) {
   return ride?._id || ride?.id || '';
@@ -135,7 +94,6 @@ function rideStatusText(status) {
 const PassengerDashboardPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { calculateRoute, loading: routeLoading } = useMapRoute();
 
   const [pickupLocation, setPickupLocation] = useState(
     user?.pickupLocation?.lat ? user.pickupLocation : { ...CAMPUSES[0].location, addressText: 'Current location' }
@@ -162,8 +120,7 @@ const PassengerDashboardPage = () => {
     [campusId]
   );
 
-  const riderPool = riders.length > 0 ? riders : fallbackRiders;
-  const rankedRiders = useMemo(() => rankRiders(riderPool), [riderPool]);
+  const rankedRiders = useMemo(() => rankRiders(riders), [riders]);
 
   const selectedRider = useMemo(() => {
     if (selectedRiderId) {
@@ -237,7 +194,8 @@ const PassengerDashboardPage = () => {
             setLiveRiderLocation(toPoint(detail.trip.currentLocation));
           }
         }
-      } catch {
+      } catch (requestError) {
+        setError(requestError?.message || 'Unable to load your rides.');
         setRides([]);
       } finally {
         setLoading(false);
@@ -356,10 +314,10 @@ const PassengerDashboardPage = () => {
       if (ranked[0]) {
         setSelectedRiderId(String(ranked[0].id || ranked[0]._id));
       }
-    } catch {
-      const rankedFallback = rankRiders(fallbackRiders);
-      setRiders(rankedFallback);
-      setSelectedRiderId(String(rankedFallback[0].id || rankedFallback[0]._id));
+    } catch (requestError) {
+      setError(requestError?.message || 'Unable to find nearby riders.');
+      setRiders([]);
+      setSelectedRiderId('');
     } finally {
       setLoading(false);
     }
@@ -375,18 +333,12 @@ const PassengerDashboardPage = () => {
       setLoading(true);
       setError('');
 
-      const routeData = await calculateRoute({
-        origin: pickupLocation,
-        destination: selectedCampus.location,
-      });
-
       const ride = await createRideRequest({
         origin: pickupLocation,
         destination: selectedCampus.location,
         campusId,
         riderId: selectedRider?.id || selectedRider?._id,
         seatCount: 1,
-        ...routeData,
       });
 
       const detail = await fetchRideById(getRideId(ride));
@@ -397,21 +349,8 @@ const PassengerDashboardPage = () => {
 
       const myRides = await listMyRideRequests();
       setRides(myRides);
-    } catch {
-      const localRide = {
-        _id: `local-ride-${Date.now()}`,
-        status: 'requested',
-        campusId,
-        riderId: selectedRider,
-        origin: pickupLocation,
-        destination: selectedCampus.location,
-        distanceMeters: selectedRider?.distanceMeters || 1800,
-        expectedDurationSeconds: Math.max(600, etaMinutes(selectedRider) * 60 + 420),
-        requestedAt: new Date().toISOString(),
-      };
-
-      setRides((previous) => [localRide, ...previous]);
-      setSelectedRideDetail({ ride: localRide, trip: deriveTrip(localRide) });
+    } catch (requestError) {
+      setError(requestError?.message || 'Unable to request ride.');
     } finally {
       setLoading(false);
     }
@@ -494,8 +433,8 @@ const PassengerDashboardPage = () => {
             </select>
           </label>
 
-          <AppButton onClick={handleRequestRide} disabled={loading || routeLoading || !selectedRider}>
-            {loading || routeLoading ? 'Requesting...' : 'Request Ride'}
+          <AppButton onClick={handleRequestRide} disabled={loading || !selectedRider}>
+            {loading ? 'Requesting...' : 'Request Ride'}
           </AppButton>
         </div>
 
@@ -587,3 +526,4 @@ const PassengerDashboardPage = () => {
 };
 
 export default PassengerDashboardPage;
+

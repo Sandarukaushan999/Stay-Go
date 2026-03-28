@@ -19,7 +19,7 @@ const overviewMetrics = [
   { label: 'Pending Incidents', value: '23', delta: '-2.6%' },
 ];
 
-const dailyRideActivity = [
+const initialDailyRideActivity = [
   { label: 'Mon', rides: 120, passengers: 340 },
   { label: 'Tue', rides: 145, passengers: 410 },
   { label: 'Wed', rides: 138, passengers: 385 },
@@ -28,6 +28,31 @@ const dailyRideActivity = [
   { label: 'Sat', rides: 92, passengers: 250 },
   { label: 'Sun', rides: 68, passengers: 190 },
 ];
+
+function clampDailyValue(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function randomDelta(range) {
+  return (Math.random() * 2 - 1) * range;
+}
+
+function buildDummyDailyActivity(previous = initialDailyRideActivity) {
+  return initialDailyRideActivity.map((seed, index) => {
+    const previousEntry = previous[index] || seed;
+
+    return {
+      label: seed.label,
+      rides: clampDailyValue(Math.round(Number(previousEntry.rides || seed.rides) + randomDelta(26)), 60, 230),
+      passengers: clampDailyValue(
+        Math.round(Number(previousEntry.passengers || seed.passengers) + randomDelta(68)),
+        170,
+        590
+      ),
+    };
+  });
+}
+
 
 const peakHoursActivity = [
   { label: '06:00', value: 28 },
@@ -304,6 +329,7 @@ const RideSharingHomePage = () => {
   const [journeyProgress, setJourneyProgress] = React.useState(0);
   const [journeyOverlayFrame, setJourneyOverlayFrame] = React.useState({ left: 12, width: 300 });
   const [liveEmergencyAlerts, setLiveEmergencyAlerts] = React.useState(() => listSafetyAlerts());
+  const [dailyRideActivity, setDailyRideActivity] = React.useState(() => initialDailyRideActivity);
 
   const goToDashboardByRole = (role) => {
     if (role === 'admin') navigate('/');
@@ -492,10 +518,19 @@ const RideSharingHomePage = () => {
     };
   }, []);
 
+  React.useEffect(() => {
+    const timer = window.setInterval(() => {
+      setDailyRideActivity((previous) => buildDummyDailyActivity(previous));
+    }, 10000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
+
   const dailyLabels = dailyRideActivity.map((item) => item.label);
   const totalPoints = dailyRideActivity.length;
   const chartBaseline = valueToY(0, DAILY_CHART);
-  const chartPlotWidth = DAILY_CHART.width - DAILY_CHART.padding.left - DAILY_CHART.padding.right;
 
   const ridesPoints = dailyRideActivity.map((item, index) => ({
     x: indexToX(index, totalPoints, DAILY_CHART),
@@ -507,16 +542,6 @@ const RideSharingHomePage = () => {
     y: valueToY(item.passengers, DAILY_CHART),
   }));
 
-  const focusDayLabel = 'Fri';
-  const focusIndex = Math.max(
-    0,
-    dailyRideActivity.findIndex((item) => item.label === focusDayLabel)
-  );
-  const focusData = dailyRideActivity[focusIndex];
-  const focusX = indexToX(focusIndex, totalPoints, DAILY_CHART);
-  const focusRidesY = valueToY(focusData.rides, DAILY_CHART);
-  const focusPassengersY = valueToY(focusData.passengers, DAILY_CHART);
-  const focusLeftPercent = ((focusX - DAILY_CHART.padding.left) / chartPlotWidth) * 100;
   const journeyBikePosition = 6 + journeyProgress * 88;
   const journeyBikeLift = Math.sin(journeyProgress * Math.PI * 2.5) * -2.5;
   const journeyLineProgress = Math.min(1, Math.max(0, journeyProgress));
@@ -678,7 +703,6 @@ const RideSharingHomePage = () => {
                 <section className="panel credentials-panel workspace-credentials-panel">
                   <h3>Seed Credentials</h3>
                   <p>Admin: sandarukaushan999@gmail.com / Sklm@2001</p>
-                  <p>Admin (legacy): admin@gmail.com / admin123</p>
                   <p>Rider: rider@staygo.local / Rider@12345</p>
                   <p>Passenger: passenger@staygo.local / Passenger@12345</p>
                 </section>
@@ -770,23 +794,8 @@ const RideSharingHomePage = () => {
                         <path d={buildSmoothPath(passengerPoints)} className="workspace-passenger-line" />
                         <path d={buildSmoothPath(ridesPoints)} className="workspace-rides-line" />
 
-                        <line
-                          x1={focusX}
-                          y1={DAILY_CHART.padding.top}
-                          x2={focusX}
-                          y2={chartBaseline}
-                          className="workspace-focus-line"
-                        />
-                        <circle cx={focusX} cy={focusPassengersY} r="5.5" className="workspace-focus-point passengers" />
-                        <circle cx={focusX} cy={focusRidesY} r="5.5" className="workspace-focus-point rides" />
+
                       </svg>
-
-                      <div className="workspace-chart-tooltip" style={{ left: `calc(${focusLeftPercent}% - 58px)` }}>
-                        <strong>{focusDayLabel}</strong>
-                        <span className="tooltip-passengers">passengers : {focusData.passengers}</span>
-                        <span className="tooltip-rides">rides : {focusData.rides}</span>
-                      </div>
-
                       <div className="workspace-chart-x-axis" aria-hidden="true">
                         {dailyLabels.map((label) => (
                           <span key={label}>{label}</span>
@@ -954,3 +963,6 @@ const RideSharingHomePage = () => {
 };
 
 export default RideSharingHomePage;
+
+
+
