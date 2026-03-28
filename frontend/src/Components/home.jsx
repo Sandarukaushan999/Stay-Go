@@ -1,5 +1,6 @@
 import Footer from './footer'
 import Header from './header'
+import { useNavigate } from 'react-router-dom';
 
 const heroStats = [
   { label: 'Active Students', value: '12.8K', note: '+14% this month' },
@@ -165,16 +166,29 @@ function SectionHeading({ eyebrow, title, description, center = false }) {
   )
 }
 
-function Home({ headerNavItems, onNavigateToRide, onNavigateToPage, onNavigateToAuth }) {
+function Home({ headerNavItems = [] }) {
+  const navigate = useNavigate();
+  const handleNavigateToAuth = (mode) => {
+    if (mode === 'login') navigate('/login');
+    else navigate('/register');
+  };
+  const handleNavigateToPage = (page) => {
+    if (page === 'privacy') navigate('/info');
+    else if (page === 'home') navigate('/');
+    else if (page === 'register') navigate('/register');
+    else if (page === 'login') navigate('/login');
+    else navigate('/');
+  };
+  const handleNavigateToRide = () => navigate('/rider');
   const actionItems = [
-    { label: 'Login', type: 'button', variant: 'button-ghost', onClick: () => onNavigateToAuth('login') },
+    { label: 'Login', type: 'button', variant: 'button-ghost', onClick: () => handleNavigateToAuth('login') },
     {
       label: 'Register',
       type: 'button',
       variant: 'button-primary',
-      onClick: () => onNavigateToAuth('register'),
+      onClick: () => handleNavigateToAuth('register'),
     },
-  ]
+  ];
 
   return (
     <div className="home-page">
@@ -197,10 +211,10 @@ function Home({ headerNavItems, onNavigateToRide, onNavigateToPage, onNavigateTo
             </p>
 
             <div className="hero-actions">
-              <button className="button button-dark" type="button" onClick={() => onNavigateToAuth('register')}>
+              <button className="button button-dark" type="button" onClick={() => handleNavigateToAuth('register')}>
                 Get Started
               </button>
-              <button className="button button-outline" type="button" onClick={onNavigateToRide}>
+              <button className="button button-outline" type="button" onClick={handleNavigateToRide}>
                 Open Ride Module
               </button>
             </div>
@@ -298,7 +312,7 @@ function Home({ headerNavItems, onNavigateToRide, onNavigateToPage, onNavigateTo
                   <button
                     className="feature-action"
                     type="button"
-                    onClick={onNavigateToRide}
+                    onClick={handleNavigateToRide}
                   >
                     Go to ride screen
                   </button>
@@ -510,10 +524,10 @@ function Home({ headerNavItems, onNavigateToRide, onNavigateToPage, onNavigateTo
               and resolve issues faster.
             </p>
             <div className="hero-actions">
-              <button className="button button-dark" type="button" onClick={() => onNavigateToAuth('register')}>
+              <button className="button button-dark" type="button" onClick={() => handleNavigateToAuth('register')}>
                 Create Account
               </button>
-              <button className="button button-outline" type="button" onClick={() => onNavigateToAuth('login')}>
+              <button className="button button-outline" type="button" onClick={() => handleNavigateToAuth('login')}>
                 Login
               </button>
             </div>
@@ -521,7 +535,7 @@ function Home({ headerNavItems, onNavigateToRide, onNavigateToPage, onNavigateTo
         </section>
       </main>
 
-      <Footer onNavigateToPage={onNavigateToPage} />
+      <Footer onNavigateToPage={handleNavigateToPage} />
     </div>
   )
 }

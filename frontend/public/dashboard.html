@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,500,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="logo">StayGo</span>
+        <button class="sidebar-toggle" id="sidebarToggle">&#9776;</button>
+      </div>
+      <nav>
+        <ul>
+          <li class="active"><span class="icon">🏠</span> Dashboard</li>
+          <li><span class="icon">🏨</span> Manage Hostels</li>
+          <li><span class="icon">🚪</span> Rooms</li>
+          <li><span class="icon">📑</span> Bookings</li>
+          <li><span class="icon">🚗</span> Riders/Drivers</li>
+          <li><span class="icon">🛣️</span> Rides</li>
+          <li><span class="icon">👤</span> Users</li>
+          <li><span class="icon">💳</span> Payments</li>
+          <li><span class="icon">📊</span> Reports</li>
+          <li><span class="icon">⚙️</span> Settings</li>
+        </ul>
+      </nav>
+    </aside>
+    <div class="main">
+      <header class="header">
+        <h1>Dashboard</h1>
+        <div class="user-section">
+          <span class="user">Admin</span>
+          <button class="logout">Logout</button>
+        </div>
+      </header>
+      <main class="content">
+        <section class="stats">
+          <div class="stat-card users">
+            <div class="stat-title">Verified Users</div>
+            <div class="stat-value">1,245</div>
+            <div class="stat-desc">+8.4% vs last period</div>
+          </div>
+          <div class="stat-card tickets">
+            <div class="stat-title">Open Tickets</div>
+            <div class="stat-value">32</div>
+            <div class="stat-desc">-12.1% vs last period</div>
+          </div>
+          <div class="stat-card rides">
+            <div class="stat-title">Active Rides</div>
+            <div class="stat-value">7</div>
+            <div class="stat-desc">+5.8% vs last period</div>
+          </div>
+        </section>
+        <section class="charts">
+          <div class="chart-card">
+            <div class="chart-title">Ticket Priority Breakdown</div>
+            <canvas id="ticketChart"></canvas>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>
