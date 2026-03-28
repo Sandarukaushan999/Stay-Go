@@ -49,7 +49,6 @@ export const CAMPUSES = [
   },
 ];
 
-
 export const LIVE_MAP_UNIVERSITIES = [
   {
     id: 'uoc',
@@ -154,18 +153,6 @@ export const LIVE_MAP_UNIVERSITIES = [
     location: { lat: 6.8212, lng: 79.8865, addressText: 'Ratmalana, Sri Lanka' },
   },
   {
-    id: 'gwuim',
-    name: 'Gampaha Wickramarachchi University of Indigenous Medicine',
-    category: 'State University',
-    location: { lat: 7.0927, lng: 80.0165, addressText: 'Yakkala, Sri Lanka' },
-  },
-  {
-    id: 'ocean-university',
-    name: 'Ocean University of Sri Lanka',
-    category: 'State University',
-    location: { lat: 6.9941, lng: 79.8758, addressText: 'Crow Island, Colombo, Sri Lanka' },
-  },
-  {
     id: 'kdu',
     name: 'General Sir John Kotelawala Defence University',
     category: 'State University',
@@ -220,12 +207,6 @@ export const LIVE_MAP_UNIVERSITIES = [
     location: { lat: 6.8938, lng: 79.8541, addressText: 'Colombo, Sri Lanka' },
   },
   {
-    id: 'apiit',
-    name: 'APIIT Sri Lanka',
-    category: 'Private / Non-State',
-    location: { lat: 6.9112, lng: 79.8612, addressText: 'Colombo, Sri Lanka' },
-  },
-  {
     id: 'icbt',
     name: 'ICBT Campus',
     category: 'Private / Non-State',
@@ -249,25 +230,8 @@ export const LIVE_MAP_UNIVERSITIES = [
     category: 'Private / Non-State',
     location: { lat: 6.8769, lng: 79.8888, addressText: 'Nugegoda, Sri Lanka' },
   },
-  {
-    id: 'nchs',
-    name: 'NCHS (Nawaloka College of Higher Studies)',
-    category: 'Private / Non-State',
-    location: { lat: 6.9036, lng: 79.8548, addressText: 'Colombo, Sri Lanka' },
-  },
-  {
-    id: 'anc',
-    name: 'ANC Education',
-    category: 'Private / Non-State',
-    location: { lat: 6.9098, lng: 79.8654, addressText: 'Colombo, Sri Lanka' },
-  },
-  {
-    id: 'bms',
-    name: 'BMS (Business Management School)',
-    category: 'Private / Non-State',
-    location: { lat: 6.8904, lng: 79.8684, addressText: 'Colombo, Sri Lanka' },
-  },
 ];
+
 export const ROUTE_PATHS = {
   home: '/',
   login: '/login',
@@ -282,4 +246,3 @@ export const ROUTE_PATHS = {
   adminTrips: '/admin/trips',
   adminIncidents: '/admin/incidents',
 };
-

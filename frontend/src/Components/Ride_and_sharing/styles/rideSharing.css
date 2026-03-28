@@ -1,3 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Playfair+Display:wght@400;700&display=swap');
+
+.ride-page,
+.workspace-page-shell,
+.page-shell,
+.panel {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+}
+
+.hero-panel .eyebrow,
+.workspace-sidebar-title,
+.workspace-sidebar-mode-label,
+.workspace-tag,
+.workspace-chip,
+.workspace-mode-pill {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+}
 .page-shell {
   width: min(1400px, calc(100% - 24px));
   margin: 0 auto;
@@ -59,7 +78,7 @@
 
 .hero-panel h1 {
   margin: 12px 0 0;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Playfair Display', serif;
   font-size: clamp(2.2rem, 4vw, 3.5rem);
   line-height: 0.98;
   letter-spacing: -0.04em;
@@ -427,7 +446,7 @@ th {
 .workspace-metric-card strong {
   display: block;
   margin-top: 8px;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-size: 1.9rem;
   line-height: 1;
 }
@@ -472,6 +491,8 @@ th {
 .workspace-incident-panel h3,
 .workspace-timeline-panel h3 {
   margin: 0;
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
 }
 
 .workspace-quick-panel .button-row {
@@ -514,7 +535,7 @@ th {
 }
 
 .workspace-status-row strong {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .tone-stable {
@@ -841,7 +862,7 @@ th {
 .workspace-chart-tooltip strong {
   display: block;
   color: #28352f;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Playfair Display', serif;
 }
 
 .workspace-chart-tooltip span {
@@ -1582,3 +1603,6 @@ th {
     height: 30px;
   }
 }
+
+
+
