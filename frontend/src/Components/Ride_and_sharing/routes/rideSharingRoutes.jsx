@@ -4,6 +4,7 @@ import Loader from '../components/common/Loader';
 import ActiveTripPage from '../pages/ActiveTripPage';
 import AdminDashboardPage from '../pages/AdminDashboardPage';
 import AdminIncidentsPage from '../pages/AdminIncidentsPage';
+import AdminRoleManagementPage from '../pages/AdminRoleManagementPage';
 import AdminTripsPage from '../pages/AdminTripsPage';
 import AdminUsersPage from '../pages/AdminUsersPage';
 import PassengerDashboardPage from '../pages/PassengerDashboardPage';
@@ -22,11 +23,31 @@ const ProtectedRoute = ({ allowedRoles, children }) => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{
+          authMessage: 'Please sign in to continue.',
+        }}
+      />
+    );
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/login" replace />;
+    const requiresAdmin = allowedRoles.includes('admin');
+
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{
+          authMessage: requiresAdmin
+            ? 'Please sign in using an admin account to access this section.'
+            : 'Your account does not have access to this section.',
+        }}
+      />
+    );
   }
 
   return children;
@@ -89,6 +110,22 @@ const RideSharingRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminUsersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/riders"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminRoleManagementPage role="rider" />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/passengers"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminRoleManagementPage role="passenger" />
           </ProtectedRoute>
         }
       />

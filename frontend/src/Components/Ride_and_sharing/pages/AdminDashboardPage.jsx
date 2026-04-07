@@ -74,7 +74,9 @@ const AdminDashboardPage = () => {
       <section className="panel page-header">
         <h1>Admin Dashboard</h1>
         <div className="button-row">
-          <Link to="/admin/users">Users</Link>
+          <Link to="/admin/riders">Riders</Link>
+          <Link to="/admin/passengers">Passengers</Link>
+          <Link to="/admin/users">All Users</Link>
           <Link to="/admin/trips">Trips</Link>
           <Link to="/admin/incidents">Incidents</Link>
         </div>

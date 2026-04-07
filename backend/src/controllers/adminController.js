@@ -5,6 +5,55 @@ const Incident = require('../models/Incident');
 const { ROLES } = require('../constants/roles');
 const { TRIP_STATUS } = require('../constants/status');
 
+const ADMIN_MANAGED_ROLES = [ROLES.RIDER, ROLES.PASSENGER];
+
+function hasOwn(payload, key) {
+  return Object.prototype.hasOwnProperty.call(payload || {}, key);
+}
+
+function normalizeText(value, { lowercase = false } = {}) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  const normalized = value.trim();
+  return lowercase ? normalized.toLowerCase() : normalized;
+}
+
+function normalizeLocation(value, fallback = { lat: 0, lng: 0, addressText: '' }) {
+  if (!value || typeof value !== 'object') {
+    return fallback;
+  }
+
+  const lat = Number(value.lat);
+  const lng = Number(value.lng);
+
+  return {
+    lat: Number.isFinite(lat) ? lat : Number(fallback.lat || 0),
+    lng: Number.isFinite(lng) ? lng : Number(fallback.lng || 0),
+    addressText: normalizeText(value.addressText || fallback.addressText || ''),
+  };
+}
+
+function normalizeEmergencyContact(value, fallback = { name: '', phone: '' }) {
+  if (!value || typeof value !== 'object') {
+    return fallback;
+  }
+
+  return {
+    name: normalizeText(value.name || fallback.name || ''),
+    phone: normalizeText(value.phone || fallback.phone || ''),
+  };
+}
+
+function roleLabel(role) {
+  if (role === ROLES.RIDER) {
+    return 'Rider';
+  }
+
+  return 'Passenger';
+}
+
 async function getDashboard(req, res) {
   const [
     totalRiders,
@@ -100,6 +149,15 @@ async function getRiders(req, res) {
   return res.json({ riders });
 }
 
+async function getPassengers(req, res) {
+  const passengers = await User.find({ role: ROLES.PASSENGER })
+    .select('-passwordHash')
+    .sort({ createdAt: -1 })
+    .limit(500);
+
+  return res.json({ passengers });
+}
+
 async function getTrips(req, res) {
   const trips = await Trip.find({})
     .sort({ createdAt: -1 })
@@ -150,12 +208,136 @@ async function blockUser(req, res) {
   });
 }
 
+async function updateUser(req, res) {
+  const managedUser = await User.findById(req.params.id);
+
+  if (!managedUser || !ADMIN_MANAGED_ROLES.includes(managedUser.role)) {
+    return res.status(404).json({ message: 'Managed user not found' });
+  }
+
+  const updates = req.body || {};
+
+  if (hasOwn(updates, 'name')) {
+    managedUser.name = normalizeText(updates.name);
+  }
+
+  if (hasOwn(updates, 'email')) {
+    const email = normalizeText(updates.email, { lowercase: true });
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const existing = await User.findOne({ email, _id: { $ne: managedUser._id } });
+
+    if (existing) {
+      return res.status(409).json({ message: 'Email is already in use' });
+    }
+
+    managedUser.email = email;
+  }
+
+  if (hasOwn(updates, 'contactNumber')) {
+    managedUser.contactNumber = normalizeText(updates.contactNumber);
+  }
+
+  if (hasOwn(updates, 'gender')) {
+    managedUser.gender = normalizeText(updates.gender);
+  }
+
+  if (hasOwn(updates, 'address')) {
+    managedUser.address = normalizeText(updates.address);
+  }
+
+  if (hasOwn(updates, 'studentId')) {
+    managedUser.studentId = normalizeText(updates.studentId);
+  }
+
+  if (hasOwn(updates, 'campusId')) {
+    managedUser.campusId = normalizeText(updates.campusId);
+  }
+
+  if (hasOwn(updates, 'isVerified')) {
+    managedUser.isVerified = Boolean(updates.isVerified);
+  }
+
+  if (hasOwn(updates, 'isBlocked')) {
+    managedUser.isBlocked = Boolean(updates.isBlocked);
+  }
+
+  if (managedUser.role === ROLES.RIDER) {
+    if (hasOwn(updates, 'vehicleNumber')) {
+      managedUser.vehicleNumber = normalizeText(updates.vehicleNumber);
+    }
+
+    if (hasOwn(updates, 'vehicleType')) {
+      managedUser.vehicleType = normalizeText(updates.vehicleType);
+    }
+
+    if (hasOwn(updates, 'seatCount')) {
+      const seatCount = Number(updates.seatCount);
+      managedUser.seatCount = Number.isFinite(seatCount) && seatCount >= 0 ? seatCount : 0;
+    }
+
+    if (hasOwn(updates, 'availability')) {
+      const availability = normalizeText(updates.availability).toLowerCase();
+      managedUser.availability = availability || 'offline';
+    }
+
+    if (hasOwn(updates, 'isOnline')) {
+      managedUser.isOnline = Boolean(updates.isOnline);
+    }
+
+    if (hasOwn(updates, 'hostelLocation')) {
+      managedUser.hostelLocation = normalizeLocation(updates.hostelLocation, managedUser.hostelLocation);
+    }
+  }
+
+  if (managedUser.role === ROLES.PASSENGER) {
+    if (hasOwn(updates, 'pickupLocation')) {
+      managedUser.pickupLocation = normalizeLocation(updates.pickupLocation, managedUser.pickupLocation);
+    }
+
+    if (hasOwn(updates, 'emergencyContact')) {
+      managedUser.emergencyContact = normalizeEmergencyContact(
+        updates.emergencyContact,
+        managedUser.emergencyContact
+      );
+    }
+  }
+
+  await managedUser.save();
+
+  return res.json({
+    message: `${roleLabel(managedUser.role)} updated successfully`,
+    user: managedUser.toPublicJSON(),
+  });
+}
+
+async function deleteUser(req, res) {
+  const managedUser = await User.findById(req.params.id);
+
+  if (!managedUser || !ADMIN_MANAGED_ROLES.includes(managedUser.role)) {
+    return res.status(404).json({ message: 'Managed user not found' });
+  }
+
+  await managedUser.deleteOne();
+
+  return res.json({
+    message: `${roleLabel(managedUser.role)} deleted successfully`,
+    deletedUserId: String(req.params.id),
+  });
+}
+
 module.exports = {
   getDashboard,
   getUsers,
   getRiders,
+  getPassengers,
   getTrips,
   getIncidents,
   approveRider,
   blockUser,
+  updateUser,
+  deleteUser,
 };

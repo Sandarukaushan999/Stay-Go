@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import AppButton from '../components/common/AppButton';
@@ -162,8 +162,8 @@ const sidebarSections = [
   {
     title: 'Management',
     items: [
-      { label: 'Rider Management', icon: 'rider', type: 'route', value: '/rider/register' },
-      { label: 'Passenger Management', icon: 'passenger', type: 'route', value: '/passenger/register' },
+      { label: 'Rider Management', icon: 'rider', type: 'route', value: '/admin/riders' },
+      { label: 'Passenger Management', icon: 'passenger', type: 'route', value: '/admin/passengers' },
       { label: 'Trip Monitoring', icon: 'trip', type: 'section', value: 'trip-monitoring' },
     ],
   },
@@ -396,6 +396,7 @@ function SidebarIcon({ name }) {
 
 const RideSharingHomePage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, user, error, isLoading } = useAuth();
   const [activeSidebarItem, setActiveSidebarItem] = React.useState('Dashboard');
   const [sidebarMode, setSidebarMode] = React.useState('full');
@@ -406,9 +407,10 @@ const RideSharingHomePage = () => {
   const [liveEmergencyAlerts, setLiveEmergencyAlerts] = React.useState(() => listSafetyAlerts());
   const [serverEmergencyAlerts, setServerEmergencyAlerts] = React.useState([]);
   const [dailyRideActivity, setDailyRideActivity] = React.useState(() => initialDailyRideActivity);
+  const routeAuthMessage = location?.state?.authMessage || '';
 
   const goToDashboardByRole = (role) => {
-    if (role === 'admin') navigate('/');
+    if (role === 'admin') navigate('/admin/dashboard');
     if (role === 'rider') navigate('/rider/dashboard');
     if (role === 'passenger') navigate('/passenger/dashboard');
   };
@@ -422,8 +424,8 @@ const RideSharingHomePage = () => {
     mode: 'onChange',
     reValidateMode: 'onChange',
     defaultValues: {
-      email: 'rider@staygo.local',
-      password: 'Rider@12345',
+      email: '',
+      password: '',
     },
   });
 
@@ -825,6 +827,7 @@ const RideSharingHomePage = () => {
                       error={errors.password?.message}
                       {...register('password')}
                     />
+                    {routeAuthMessage ? <p className="app-error">{routeAuthMessage}</p> : null}
                     {error ? <p className="app-error">{error}</p> : null}
                     <AppButton type="submit" disabled={isLoading}>
                       {isLoading ? 'Signing In...' : 'Sign In'}
@@ -852,9 +855,10 @@ const RideSharingHomePage = () => {
 
                 <section className="panel credentials-panel workspace-credentials-panel">
                   <h3>Seed Credentials</h3>
-                  <p>Admin: sandarukaushan999@gmail.com / Sklm@2001</p>
+                  <p>Admin (from backend .env): admin@gmail.com / admin123</p>
                   <p>Rider: rider@staygo.local / Rider@12345</p>
                   <p>Passenger: passenger@staygo.local / Passenger@12345</p>
+                  <p>Use your backend .env values if admin credentials were changed.</p>
                 </section>
               </div>
 

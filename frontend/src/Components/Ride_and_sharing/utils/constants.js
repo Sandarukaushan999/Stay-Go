@@ -243,6 +243,9 @@ export const ROUTE_PATHS = {
   tripHistory: '/trip/history',
   adminDashboard: '/admin/dashboard',
   adminUsers: '/admin/users',
+  adminRiders: '/admin/riders',
+  adminPassengers: '/admin/passengers',
   adminTrips: '/admin/trips',
   adminIncidents: '/admin/incidents',
 };
+

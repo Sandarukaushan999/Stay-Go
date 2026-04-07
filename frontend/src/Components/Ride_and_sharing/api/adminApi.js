@@ -15,6 +15,11 @@ export async function getAdminRiders() {
   return data;
 }
 
+export async function getAdminPassengers() {
+  const { data } = await httpClient.get('/admin/passengers');
+  return data;
+}
+
 export async function getAdminTrips() {
   const { data } = await httpClient.get('/admin/trips');
   return data;
@@ -32,5 +37,15 @@ export async function approveRider(riderId) {
 
 export async function blockUser(userId, block = true) {
   const { data } = await httpClient.patch(`/admin/users/${userId}/block`, { block });
+  return data;
+}
+
+export async function updateAdminUser(userId, payload) {
+  const { data } = await httpClient.put(`/admin/users/${userId}`, payload);
+  return data;
+}
+
+export async function deleteAdminUser(userId) {
+  const { data } = await httpClient.delete(`/admin/users/${userId}`);
   return data;
 }
