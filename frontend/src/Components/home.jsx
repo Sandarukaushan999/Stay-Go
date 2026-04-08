@@ -24,8 +24,8 @@ const valueSignals = [
   {
     title: 'Transparent hostel support',
     description: 'Maintenance tickets stay visible from reporting to final closure and rating.',
-    actionLabel: 'Open Maintenance Section',
-    actionTarget: { type: 'section', value: 'maintenance' },
+    actionLabel: 'Open Maintenance Module',
+    actionTarget: { type: 'page', value: 'maintenance' },
   },
   {
     title: 'Role-based analytics',
@@ -58,7 +58,7 @@ const valueCards = [
     description:
       'Submit issues digitally, follow every stage of the workflow, and rate service quality after resolution.',
     actionLabel: 'Open Maintenance',
-    actionTarget: { type: 'section', value: 'maintenance' },
+    actionTarget: { type: 'page', value: 'maintenance' },
   },
 ]
 
@@ -146,7 +146,7 @@ const roleCards = [
     role: 'Technician / Staff',
     summary: 'Receive assigned tasks, update ticket stages, and keep service performance transparent.',
     actionLabel: 'Open Maintenance',
-    actionTarget: { type: 'section', value: 'maintenance' },
+    actionTarget: { type: 'page', value: 'maintenance' },
   },
   {
     role: 'Admin',
