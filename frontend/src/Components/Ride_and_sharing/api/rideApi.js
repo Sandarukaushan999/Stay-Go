@@ -44,3 +44,8 @@ export async function reportUnsafeBehavior(rideId) {
   const { data } = await httpClient.post(`/ride-sharing/rides/${rideId}/report-unsafe`);
   return data;
 }
+
+export async function triggerRideSos(rideId, payload = {}) {
+  const { data } = await httpClient.post(`/ride-sharing/rides/${rideId}/sos`, payload);
+  return data;
+}

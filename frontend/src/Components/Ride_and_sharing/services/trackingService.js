@@ -68,7 +68,7 @@ export async function getTripHistory() {
   return data.trips || [];
 }
 
-export async function sendTripSos(tripId) {
-  const { data } = await httpClient.post(`/ride-sharing/trips/${tripId}/sos`);
+export async function sendTripSos(tripId, payload = {}) {
+  const { data } = await httpClient.post(`/ride-sharing/trips/${tripId}/sos`, payload);
   return data;
 }

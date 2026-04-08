@@ -10,6 +10,9 @@ import { CAMPUSES, LIVE_MAP_UNIVERSITIES } from '../utils/constants';
 import { loginSchema } from '../utils/validators';
 import bikeIconImage from '../../../assets/bike.png';
 import locationIconImage from '../../../assets/location.png';
+import { listSafetyAlerts, subscribeSafetyAlerts } from '../services/safetyAlertService';
+import { getMyNotifications } from '../services/notificationService';
+import { onNewNotification } from '../services/trackingService';
 
 const overviewMetrics = [
   { label: 'Active Riders', value: '1,284', delta: '+14.6%' },
@@ -18,7 +21,7 @@ const overviewMetrics = [
   { label: 'Pending Incidents', value: '23', delta: '-2.6%' },
 ];
 
-const dailyRideActivity = [
+const initialDailyRideActivity = [
   { label: 'Mon', rides: 120, passengers: 340 },
   { label: 'Tue', rides: 145, passengers: 410 },
   { label: 'Wed', rides: 138, passengers: 385 },
@@ -27,6 +30,31 @@ const dailyRideActivity = [
   { label: 'Sat', rides: 92, passengers: 250 },
   { label: 'Sun', rides: 68, passengers: 190 },
 ];
+
+function clampDailyValue(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function randomDelta(range) {
+  return (Math.random() * 2 - 1) * range;
+}
+
+function buildDummyDailyActivity(previous = initialDailyRideActivity) {
+  return initialDailyRideActivity.map((seed, index) => {
+    const previousEntry = previous[index] || seed;
+
+    return {
+      label: seed.label,
+      rides: clampDailyValue(Math.round(Number(previousEntry.rides || seed.rides) + randomDelta(26)), 60, 230),
+      passengers: clampDailyValue(
+        Math.round(Number(previousEntry.passengers || seed.passengers) + randomDelta(68)),
+        170,
+        590
+      ),
+    };
+  });
+}
+
 
 const peakHoursActivity = [
   { label: '06:00', value: 28 },
@@ -216,6 +244,79 @@ function buildAreaPath(points, baselineY) {
   return `${curvePath} L ${last.x} ${baselineY} L ${first.x} ${baselineY} Z`;
 }
 
+function formatAlertRelativeTime(timestamp) {
+  const parsed = Date.parse(timestamp || '');
+
+  if (!Number.isFinite(parsed)) {
+    return 'Now';
+  }
+
+  const diffMs = Math.max(0, Date.now() - parsed);
+  const diffMinutes = Math.floor(diffMs / 60000);
+
+  if (diffMinutes < 1) {
+    return 'Now';
+  }
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes} min ago`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+
+  if (diffHours < 24) {
+    return `${diffHours} hr${diffHours === 1 ? '' : 's'} ago`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+}
+
+function alertLevelFromNotification(notification) {
+  const payload = notification?.payload || {};
+  const payloadLevel = String(payload.level || '').toLowerCase();
+
+  if (['critical', 'high', 'medium', 'low'].includes(payloadLevel)) {
+    return payloadLevel;
+  }
+
+  const type = String(notification?.type || '').toLowerCase();
+
+  if (type.includes('sos')) {
+    return 'critical';
+  }
+
+  if (type.includes('incident')) {
+    return 'high';
+  }
+
+  return 'medium';
+}
+
+function mapNotificationToEmergencyAlert(notification) {
+  if (!notification) {
+    return null;
+  }
+
+  const payload = notification?.payload || {};
+  const tripId = payload.tripId ? String(payload.tripId).slice(-8) : '';
+  const rideId = payload.rideId ? String(payload.rideId).slice(-8) : '';
+  const fallbackLocation =
+    payload.location ||
+    (tripId ? `Trip #${tripId}` : rideId ? `Ride #${rideId}` : 'Campus route');
+
+  return {
+    id: notification._id || notification.id || `alert-${tripId || rideId || Date.now()}`,
+    title: notification.title || 'Emergency Alert',
+    location: fallbackLocation,
+    level: alertLevelFromNotification(notification),
+    time: formatAlertRelativeTime(notification.createdAt),
+    message: String(payload.sosMessage || notification.message || '').trim(),
+    passengerName: payload.passengerName || '',
+    createdAt: notification.createdAt || new Date().toISOString(),
+  };
+}
+
 function SidebarIcon({ name }) {
   const iconMap = {
     dashboard: (
@@ -302,6 +403,9 @@ const RideSharingHomePage = () => {
   const sidebarRef = React.useRef(null);
   const [journeyProgress, setJourneyProgress] = React.useState(0);
   const [journeyOverlayFrame, setJourneyOverlayFrame] = React.useState({ left: 12, width: 300 });
+  const [liveEmergencyAlerts, setLiveEmergencyAlerts] = React.useState(() => listSafetyAlerts());
+  const [serverEmergencyAlerts, setServerEmergencyAlerts] = React.useState([]);
+  const [dailyRideActivity, setDailyRideActivity] = React.useState(() => initialDailyRideActivity);
 
   const goToDashboardByRole = (role) => {
     if (role === 'admin') navigate('/');
@@ -473,10 +577,94 @@ const RideSharingHomePage = () => {
       }
     };
   }, [sidebarMode]);
+
+  React.useEffect(() => {
+    setLiveEmergencyAlerts(listSafetyAlerts());
+
+    const unsubscribe = subscribeSafetyAlerts((alert) => {
+      if (!alert) {
+        return;
+      }
+
+      setLiveEmergencyAlerts((previous) => [alert, ...previous.filter((item) => item.id !== alert.id)].slice(0, 8));
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!user || user.role !== 'admin') {
+      setServerEmergencyAlerts([]);
+      return undefined;
+    }
+
+    let active = true;
+
+    const loadAdminEmergencyAlerts = async () => {
+      try {
+        const notifications = await getMyNotifications();
+
+        if (!active) {
+          return;
+        }
+
+        const mapped = notifications
+          .filter((notification) => {
+            const type = String(notification?.type || '').toLowerCase();
+            return type.includes('safety') || type.includes('incident') || type.includes('admin');
+          })
+          .map((notification) => mapNotificationToEmergencyAlert(notification))
+          .filter(Boolean);
+
+        setServerEmergencyAlerts(mapped.slice(0, 20));
+      } catch {
+        if (active) {
+          setServerEmergencyAlerts([]);
+        }
+      }
+    };
+
+    loadAdminEmergencyAlerts();
+
+    const unsubscribe = onNewNotification((notification) => {
+      if (!notification) {
+        return;
+      }
+
+      const mapped = mapNotificationToEmergencyAlert(notification);
+
+      if (!mapped) {
+        return;
+      }
+
+      setServerEmergencyAlerts((previous) =>
+        [mapped, ...previous.filter((item) => item.id !== mapped.id)].slice(0, 20)
+      );
+    });
+
+    const refreshTimer = window.setInterval(loadAdminEmergencyAlerts, 30000);
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+      window.clearInterval(refreshTimer);
+    };
+  }, [user?.id, user?.role]);
+  React.useEffect(() => {
+    const timer = window.setInterval(() => {
+      setDailyRideActivity((previous) => buildDummyDailyActivity(previous));
+    }, 10000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
+
   const dailyLabels = dailyRideActivity.map((item) => item.label);
   const totalPoints = dailyRideActivity.length;
   const chartBaseline = valueToY(0, DAILY_CHART);
-  const chartPlotWidth = DAILY_CHART.width - DAILY_CHART.padding.left - DAILY_CHART.padding.right;
 
   const ridesPoints = dailyRideActivity.map((item, index) => ({
     x: indexToX(index, totalPoints, DAILY_CHART),
@@ -488,19 +676,26 @@ const RideSharingHomePage = () => {
     y: valueToY(item.passengers, DAILY_CHART),
   }));
 
-  const focusDayLabel = 'Fri';
-  const focusIndex = Math.max(
-    0,
-    dailyRideActivity.findIndex((item) => item.label === focusDayLabel)
-  );
-  const focusData = dailyRideActivity[focusIndex];
-  const focusX = indexToX(focusIndex, totalPoints, DAILY_CHART);
-  const focusRidesY = valueToY(focusData.rides, DAILY_CHART);
-  const focusPassengersY = valueToY(focusData.passengers, DAILY_CHART);
-  const focusLeftPercent = ((focusX - DAILY_CHART.padding.left) / chartPlotWidth) * 100;
   const journeyBikePosition = 6 + journeyProgress * 88;
   const journeyBikeLift = Math.sin(journeyProgress * Math.PI * 2.5) * -2.5;
   const journeyLineProgress = Math.min(1, Math.max(0, journeyProgress));
+  const mergedEmergencyAlerts = React.useMemo(() => {
+    const seen = new Set();
+    const combined = [...serverEmergencyAlerts, ...liveEmergencyAlerts, ...emergencyAlerts];
+
+    return combined
+      .filter((alert) => {
+        const key = alert.id || `${alert.title}-${alert.location}-${alert.time}`;
+
+        if (seen.has(key)) {
+          return false;
+        }
+
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 8);
+  }, [serverEmergencyAlerts, liveEmergencyAlerts]);
 
   return (
     <div className="ride-page" ref={ridePageRef}>
@@ -658,7 +853,6 @@ const RideSharingHomePage = () => {
                 <section className="panel credentials-panel workspace-credentials-panel">
                   <h3>Seed Credentials</h3>
                   <p>Admin: sandarukaushan999@gmail.com / Sklm@2001</p>
-                  <p>Admin (legacy): admin@gmail.com / admin123</p>
                   <p>Rider: rider@staygo.local / Rider@12345</p>
                   <p>Passenger: passenger@staygo.local / Passenger@12345</p>
                 </section>
@@ -750,23 +944,8 @@ const RideSharingHomePage = () => {
                         <path d={buildSmoothPath(passengerPoints)} className="workspace-passenger-line" />
                         <path d={buildSmoothPath(ridesPoints)} className="workspace-rides-line" />
 
-                        <line
-                          x1={focusX}
-                          y1={DAILY_CHART.padding.top}
-                          x2={focusX}
-                          y2={chartBaseline}
-                          className="workspace-focus-line"
-                        />
-                        <circle cx={focusX} cy={focusPassengersY} r="5.5" className="workspace-focus-point passengers" />
-                        <circle cx={focusX} cy={focusRidesY} r="5.5" className="workspace-focus-point rides" />
+
                       </svg>
-
-                      <div className="workspace-chart-tooltip" style={{ left: `calc(${focusLeftPercent}% - 58px)` }}>
-                        <strong>{focusDayLabel}</strong>
-                        <span className="tooltip-passengers">passengers : {focusData.passengers}</span>
-                        <span className="tooltip-rides">rides : {focusData.rides}</span>
-                      </div>
-
                       <div className="workspace-chart-x-axis" aria-hidden="true">
                         {dailyLabels.map((label) => (
                           <span key={label}>{label}</span>
@@ -828,14 +1007,16 @@ const RideSharingHomePage = () => {
               <article className="panel workspace-alerts-panel" id="safety-alerts">
                 <div className="panel-head">
                   <h3>Emergency Alerts</h3>
-                  <span className="workspace-alert-count">{emergencyAlerts.length}</span>
+                  <span className="workspace-alert-count">{mergedEmergencyAlerts.length}</span>
                 </div>
                 <div className="workspace-alert-list">
-                  {emergencyAlerts.map((alert) => (
-                    <article className="workspace-alert-item" key={`${alert.title}-${alert.location}`}>
+                  {mergedEmergencyAlerts.map((alert) => (
+                    <article className="workspace-alert-item" key={alert.id || `${alert.title}-${alert.location}-${alert.time}`}>
                       <div>
                         <strong>{alert.title}</strong>
                         <p>{alert.location}</p>
+                        {alert.passengerName ? <small>Passenger: {alert.passengerName}</small> : null}
+                        {alert.message ? <small>Note: {alert.message}</small> : null}
                       </div>
                       <div>
                         <span className={`workspace-severity severity-${alert.level}`}>{alert.level}</span>
@@ -933,3 +1114,4 @@ const RideSharingHomePage = () => {
 };
 
 export default RideSharingHomePage;
+
