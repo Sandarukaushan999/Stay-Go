@@ -2,10 +2,11 @@
 // API SERVICE - handles all backend API calls
 // This file is the bridge between frontend and backend
 // All fetch calls go through here so we don't repeat code
-// Base URL points to our Express backend on port 5000
+// Base URL points to our maintenance Express backend on port 5001
+// (The team's ride sharing backend uses port 5000)
 // ============================================
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://localhost:5001/api';
 
 // ---- HELPER: Get the saved token from localStorage ----
 function getToken() {

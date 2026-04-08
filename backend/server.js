@@ -18,7 +18,8 @@ const app = express();
 // ============================================
 
 // Allow frontend (running on different port) to talk to backend
-app.use(cors());
+// We allow all origins so any port (5173, 5174, etc.) can connect
+app.use(cors({ origin: true, credentials: true }));
 
 // Parse JSON data from request body
 app.use(express.json());
@@ -46,8 +47,9 @@ app.get('/api', (req, res) => {
 // ============================================
 // START SERVER
 // Connect to MongoDB first, then start listening for requests
+// We use port 5001 to avoid conflict with team's backend (which uses 5000)
 // ============================================
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.MAINTENANCE_PORT || 5001;
 
 connectDB().then(() => {
   app.listen(PORT, () => {

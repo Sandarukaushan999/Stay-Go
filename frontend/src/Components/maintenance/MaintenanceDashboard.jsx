@@ -10,6 +10,7 @@ import MaintenanceAnalytics from './MaintenanceAnalytics'
 import Announcements from './Announcements'
 import DownloadReports from './DownloadReports'
 import * as api from './api'
+import { mockTickets, mockAnnouncements, mockTechnicians, mockUsers } from './mockData'
 import './maintenance.css'
 
 // ============================================
@@ -93,8 +94,8 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
 
   // ---- MOCK DATA FALLBACK ----
   // If backend is not running, use mock data so UI still works
+  // We use the mockData module imported at the top of this file
   function loadMockData() {
-    const { mockTickets, mockAnnouncements, mockTechnicians, mockUsers } = require('./mockData')
     setTickets(mockTickets)
     setAnnouncements(mockAnnouncements)
     setTechnicians(mockTechnicians)
