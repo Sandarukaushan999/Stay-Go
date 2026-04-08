@@ -1,5 +1,5 @@
-import Footer from './footer'
-import Header from './header'
+import Footer from '../../userMngmnt&AdminDshbrd/footer'
+import Header from '../../userMngmnt&AdminDshbrd/header'
 
 const rideStats = [
   { label: 'Active rides now', value: '64', note: 'Across verified student drivers' },

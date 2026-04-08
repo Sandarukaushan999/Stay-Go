@@ -3,9 +3,9 @@ import L from 'leaflet';
 import { MapContainer, Marker, Polyline, TileLayer } from 'react-leaflet';
 import { MAP_DEFAULTS } from '../../utils/constants';
 import { ensureLeafletMarkerIcon } from '../../utils/leafletIcon';
-import bikeImage from '../../../../assets/bike.png';
-import passengerImage from '../../../../assets/pasenger.png';
-import locationImage from '../../../../assets/location.png';
+import bikeImage from '../../assets/bike.png';
+import passengerImage from '../../assets/pasenger.png';
+import locationImage from '../../assets/location.png';
 import 'leaflet/dist/leaflet.css';
 
 ensureLeafletMarkerIcon();

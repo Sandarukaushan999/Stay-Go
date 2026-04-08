@@ -3,7 +3,7 @@ import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import { MAP_DEFAULTS } from '../../utils/constants';
 import { ensureLeafletMarkerIcon } from '../../utils/leafletIcon';
-import universityIconImage from '../../../../assets/uni.png';
+import universityIconImage from '../../assets/uni.png';
 import 'leaflet/dist/leaflet.css';
 
 ensureLeafletMarkerIcon();
