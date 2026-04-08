@@ -12,7 +12,7 @@ import RatingStars from './RatingStars'
 // Students can rate resolved tickets here (which closes the ticket)
 // ============================================
 
-function TicketDetail({ ticket, currentUser, onRate, onBack }) {
+function TicketDetail({ ticket, currentUser, currentRole, onRate, onBack }) {
   // ---- RATING STATE ----
   // Store the rating value (1-5) and optional feedback text
   const [rating, setRating] = useState(0)
@@ -62,10 +62,11 @@ function TicketDetail({ ticket, currentUser, onRate, onBack }) {
   }
 
   // Check if the current user can rate this ticket
-  // Only the student who submitted the ticket can rate it, and only when status is "resolved"
+  // Only the student who submitted can rate, and only when status is "resolved"
+  // We check currentRole (UI role) instead of backend role for simpler logic
   const canRate = ticket.status === 'resolved'
     && currentUser
-    && currentUser.role === 'student'
+    && currentRole === 'student'
     && ticket.submittedBy
     && (currentUser.id || currentUser._id) === (ticket.submittedBy.id || ticket.submittedBy._id)
     && !isRatingSubmitted

@@ -7,10 +7,7 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "maintenance:dev": "node --watch server.js",
-    "maintenance:start": "node server.js",
     "seed": "node src/bootstrap/runSeed.js",
-    "maintenance:seed": "node seed.js",
     "test:db": "node src/bootstrap/testConnection.js",
     "mongo:up": "docker compose up -d",
     "mongo:down": "docker compose down"

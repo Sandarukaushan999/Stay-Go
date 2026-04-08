@@ -7,6 +7,8 @@ const incidentRoutes = require('./incidentRoutes');
 const adminRoutes = require('./adminRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const profileRoutes = require('./profileRoutes');
+const maintenanceTicketRoutes = require('./maintenanceTicketRoutes');
+const maintenanceAnnouncementRoutes = require('./maintenanceAnnouncementRoutes');
 
 const router = express.Router();
 
@@ -22,5 +24,9 @@ router.use('/ride-sharing/incidents', incidentRoutes);
 router.use('/ride-sharing/notifications', notificationRoutes);
 router.use('/ride-sharing/profile', profileRoutes);
 router.use('/admin', adminRoutes);
+
+// Hostel maintenance module routes
+router.use('/maintenance/tickets', maintenanceTicketRoutes);
+router.use('/maintenance/announcements', maintenanceAnnouncementRoutes);
 
 module.exports = router;

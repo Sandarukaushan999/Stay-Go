@@ -2,11 +2,11 @@
 // API SERVICE - handles all backend API calls
 // This file is the bridge between frontend and backend
 // All fetch calls go through here so we don't repeat code
-// Base URL points to our maintenance Express backend on port 5001
-// (The team's ride sharing backend uses port 5000)
+// Now connected to the team's integrated backend on port 5000
+// Uses team's auth system (Samajith's module)
 // ============================================
 
-const API_BASE = 'http://localhost:5001/api';
+const API_BASE = 'http://localhost:5000/api';
 
 // ---- HELPER: Get the saved token from localStorage ----
 function getToken() {
@@ -40,10 +40,7 @@ function clearAuth() {
 async function apiRequest(endpoint, options = {}) {
   const token = getToken();
 
-  // Build headers - always send JSON, add token if available
-  const headers = {
-    ...options.headers,
-  };
+  const headers = { ...options.headers };
 
   // Only add Content-Type for non-FormData requests
   // FormData sets its own content type with boundary
@@ -56,13 +53,11 @@ async function apiRequest(endpoint, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Make the actual fetch call
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
   });
 
-  // Parse the response as JSON
   const data = await response.json();
 
   // If response is not OK (400, 401, 500 etc), throw error
@@ -74,10 +69,10 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 // ============================================
-// AUTH API CALLS
+// AUTH API CALLS (uses team's auth endpoints)
 // ============================================
 
-// Login and get JWT token
+// Login and get JWT token from team's auth endpoint
 export async function login(email, password) {
   const data = await apiRequest('/auth/login', {
     method: 'POST',
@@ -89,7 +84,7 @@ export async function login(email, password) {
   return data;
 }
 
-// Get current logged in user
+// Get current logged in user from localStorage
 export function getCurrentUser() {
   return getUser();
 }
@@ -105,17 +100,19 @@ export function isLoggedIn() {
 }
 
 // Get list of technicians (for admin to assign)
+// This calls our maintenance endpoint to get all users with role='staff'
 export async function getTechnicians() {
-  return apiRequest('/auth/technicians');
+  return apiRequest('/maintenance/tickets/technicians');
 }
 
 // ============================================
 // TICKET API CALLS
+// All endpoints under /api/maintenance/tickets
 // ============================================
 
 // Student: Create a new ticket
 export async function createTicket(formData) {
-  // If there are file attachments, use FormData
+  // If there are file attachments, use FormData for multipart upload
   if (formData.files && formData.files.length > 0) {
     const form = new FormData();
     form.append('title', formData.title);
@@ -127,11 +124,11 @@ export async function createTicket(formData) {
     formData.files.forEach((file) => {
       form.append('attachments', file);
     });
-    return apiRequest('/tickets', { method: 'POST', body: form });
+    return apiRequest('/maintenance/tickets', { method: 'POST', body: form });
   }
 
   // No files - send as JSON
-  return apiRequest('/tickets', {
+  return apiRequest('/maintenance/tickets', {
     method: 'POST',
     body: JSON.stringify(formData),
   });
@@ -139,17 +136,16 @@ export async function createTicket(formData) {
 
 // Student: Get my tickets
 export async function getMyTickets() {
-  return apiRequest('/tickets/my');
+  return apiRequest('/maintenance/tickets/my');
 }
 
 // Technician: Get tickets assigned to me
 export async function getAssignedTickets() {
-  return apiRequest('/tickets/assigned');
+  return apiRequest('/maintenance/tickets/assigned');
 }
 
 // Admin: Get all tickets (with optional filters)
 export async function getAllTickets(filters = {}) {
-  // Build query string from filters
   const params = new URLSearchParams();
   if (filters.status) params.append('status', filters.status);
   if (filters.priority) params.append('priority', filters.priority);
@@ -157,19 +153,21 @@ export async function getAllTickets(filters = {}) {
   if (filters.search) params.append('search', filters.search);
 
   const queryString = params.toString();
-  const endpoint = queryString ? `/tickets?${queryString}` : '/tickets';
+  const endpoint = queryString
+    ? `/maintenance/tickets?${queryString}`
+    : '/maintenance/tickets';
 
   return apiRequest(endpoint);
 }
 
 // Any user: Get single ticket by ID
 export async function getTicketById(id) {
-  return apiRequest(`/tickets/${id}`);
+  return apiRequest(`/maintenance/tickets/${id}`);
 }
 
 // Admin: Assign technician to ticket
 export async function assignTicket(ticketId, technicianId) {
-  return apiRequest(`/tickets/${ticketId}/assign`, {
+  return apiRequest(`/maintenance/tickets/${ticketId}/assign`, {
     method: 'PATCH',
     body: JSON.stringify({ technicianId }),
   });
@@ -177,7 +175,7 @@ export async function assignTicket(ticketId, technicianId) {
 
 // Admin: Reject ticket
 export async function rejectTicket(ticketId, reason) {
-  return apiRequest(`/tickets/${ticketId}/reject`, {
+  return apiRequest(`/maintenance/tickets/${ticketId}/reject`, {
     method: 'PATCH',
     body: JSON.stringify({ reason }),
   });
@@ -185,14 +183,14 @@ export async function rejectTicket(ticketId, reason) {
 
 // Technician: Start working on ticket
 export async function startTicket(ticketId) {
-  return apiRequest(`/tickets/${ticketId}/start`, {
+  return apiRequest(`/maintenance/tickets/${ticketId}/start`, {
     method: 'PATCH',
   });
 }
 
 // Technician: Resolve ticket
 export async function resolveTicket(ticketId, resolutionNote) {
-  return apiRequest(`/tickets/${ticketId}/resolve`, {
+  return apiRequest(`/maintenance/tickets/${ticketId}/resolve`, {
     method: 'PATCH',
     body: JSON.stringify({ resolutionNote }),
   });
@@ -200,7 +198,7 @@ export async function resolveTicket(ticketId, resolutionNote) {
 
 // Student: Rate and close ticket
 export async function rateTicket(ticketId, rating, ratingFeedback) {
-  return apiRequest(`/tickets/${ticketId}/rate`, {
+  return apiRequest(`/maintenance/tickets/${ticketId}/rate`, {
     method: 'PATCH',
     body: JSON.stringify({ rating, ratingFeedback }),
   });
@@ -208,26 +206,27 @@ export async function rateTicket(ticketId, rating, ratingFeedback) {
 
 // Admin: Get analytics data
 export async function getAnalytics() {
-  return apiRequest('/tickets/analytics');
+  return apiRequest('/maintenance/tickets/analytics');
 }
 
 // ============================================
 // ANNOUNCEMENT API CALLS
+// All endpoints under /api/maintenance/announcements
 // ============================================
 
 // All users: Get active announcements
 export async function getActiveAnnouncements() {
-  return apiRequest('/announcements');
+  return apiRequest('/maintenance/announcements');
 }
 
 // Admin: Get all announcements (including hidden)
 export async function getAllAnnouncements() {
-  return apiRequest('/announcements/all');
+  return apiRequest('/maintenance/announcements/all');
 }
 
 // Admin: Create announcement
 export async function createAnnouncement(data) {
-  return apiRequest('/announcements', {
+  return apiRequest('/maintenance/announcements', {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -235,7 +234,7 @@ export async function createAnnouncement(data) {
 
 // Admin: Update announcement
 export async function updateAnnouncement(id, data) {
-  return apiRequest(`/announcements/${id}`, {
+  return apiRequest(`/maintenance/announcements/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });
@@ -243,14 +242,14 @@ export async function updateAnnouncement(id, data) {
 
 // Admin: Delete announcement
 export async function deleteAnnouncement(id) {
-  return apiRequest(`/announcements/${id}`, {
+  return apiRequest(`/maintenance/announcements/${id}`, {
     method: 'DELETE',
   });
 }
 
 // Admin: Toggle announcement visibility
 export async function toggleAnnouncement(id) {
-  return apiRequest(`/announcements/${id}/toggle`, {
+  return apiRequest(`/maintenance/announcements/${id}/toggle`, {
     method: 'PATCH',
   });
 }

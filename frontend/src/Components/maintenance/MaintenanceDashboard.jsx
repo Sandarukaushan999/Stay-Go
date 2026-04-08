@@ -15,12 +15,14 @@ import './maintenance.css'
 
 // ============================================
 // MaintenanceDashboard - Main entry point for the maintenance module
-// NOW CONNECTED TO REAL BACKEND API (MongoDB Atlas)
-// Uses api.js for all backend calls
-// Role switcher auto-logs in as different test users for demo
+// CONNECTED TO TEAM'S INTEGRATED BACKEND on port 5000
+// Uses team's auth system (Samajith's module) via api.js
+// Role mapping: frontend 'student' = backend 'passenger' role
 // ============================================
 
 // Test login credentials for each role
+// Note: The team's backend uses 'passenger' role for students
+// We map 'student' (UI) to the passenger account
 const TEST_ACCOUNTS = {
   student: { email: 'kasun@university.edu', password: 'password123' },
   staff: { email: 'nimal@university.edu', password: 'password123' },
@@ -320,7 +322,7 @@ function MaintenanceDashboard({ headerNavItems, onNavigateHome, onNavigateToPage
       case 'my-tickets':
         return <MyTickets tickets={tickets} onViewTicket={viewTicketDetail} />
       case 'ticket-detail':
-        return <TicketDetail ticket={selectedTicket} currentUser={currentUser} onRate={handleRateTicket}
+        return <TicketDetail ticket={selectedTicket} currentUser={currentUser} currentRole={currentRole} onRate={handleRateTicket}
           onBack={() => goToScreen(currentRole === 'admin' ? 'admin-tickets' : currentRole === 'staff' ? 'tasks' : 'my-tickets')} />
       case 'tasks':
         return <TechnicianTasks tickets={tickets}
