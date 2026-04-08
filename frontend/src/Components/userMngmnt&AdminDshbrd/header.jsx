@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import logo from '../assets/logo.png'
+import logo from '../../assets/logo.png'
 
 function HeaderAction({ item, className }) {
   if (item.type === 'link') {

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
-import Header from '../Components/header';
-import Footer from '../Components/footer';
+import Header from '../Components/userMngmnt&AdminDshbrd/header';
+import Footer from '../Components/userMngmnt&AdminDshbrd/footer';
 
 // SVG icon components
 const CheckIcon = () => (

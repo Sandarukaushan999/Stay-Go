@@ -1,57 +1,39 @@
+  // Fix: define handleNavigateToPage for Footer
+  const handleNavigateToPage = (page) => {
+    // You can implement navigation logic here if needed
+  };
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "./header";
 import Footer from "./footer";
 import { FaUser, FaLock, FaEnvelope, FaUserShield, FaCheckCircle, FaCar, FaWrench, FaMapMarkerAlt, FaPhone } from "react-icons/fa";
 
 const AuthPage = ({ mode = "login" }) => {
+  const navigate = useNavigate();
+  // Add error state for error handling
+  const [error, setError] = useState("");
   const [isRegister, setIsRegister] = useState(mode === "register");
   const [formData, setFormData] = useState({
     username: "",
     name: "", // Used for Tech/Rider where they might prompt 'Name' instead of 'Username'
     email: "",
     address: "",
-    contactNumber: "",
     password: "",
     confirmPassword: "",
-    role: "", // "student", "technician", "rider", "admin"
-    hasVehicle: false,
-    vehicleNumber: "",
-    vehicleType: "",
-    workType: "",
+    role: "",
+    contactNumber: ""
   });
-  const [error, setError] = useState("");
-  const navigate = useNavigate();
 
-  const handleNavigateToAuth = (newMode) => {
-    setIsRegister(newMode === "register");
-    setError("");
-  };
-
-  const handleNavigateToPage = (page) => {
-    if (page === 'privacy') navigate('/info');
-    else if (page === 'home') navigate('/');
-    else if (page === 'register') setIsRegister(true);
-    else if (page === 'login') setIsRegister(false);
-    else navigate('/');
-  };
-
-  const actionItems = [
-    { label: 'Login', type: 'button', variant: 'button-ghost', onClick: () => handleNavigateToAuth('login') },
-    { label: 'Register', type: 'button', variant: 'button-primary', onClick: () => handleNavigateToAuth('register') },
-  ];
-
+  // Add handleChange for form fields
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({ 
-      ...formData, 
-      [name]: type === "checkbox" ? checked : value 
-    });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
     if (isRegister) {
       if (!formData.role) {
         setError("Please select a platform role to register.");
@@ -61,28 +43,105 @@ const AuthPage = ({ mode = "login" }) => {
         setError("Passwords do not match");
         return;
       }
-      // Specific validation if needed...
 
-      // Registration logic here
-      navigate("/dashboard");
-      } else {
-      // Login logic here
+      // Try to register via backend API
+      try {
+        const displayName = formData.username || formData.name || "User";
+        const regRes = await fetch("http://localhost:5000/api/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: displayName,
+            password: formData.password,
+            role: formData.role,
+            fullName: displayName,
+            email: formData.email || "",
+            phone: formData.contactNumber || "",
+            address: formData.address || "",
+          }),
+        });
+        const regData = await regRes.json();
+
+        if (!regRes.ok) {
+          setError(regData.message || "Registration failed.");
+          return;
+        }
+
+        // After successful registration, auto-login to get token + user._id
+        const autoLoginUsername = formData.username || formData.name || displayName;
+        const loginRes = await fetch("http://localhost:5000/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: autoLoginUsername,
+            password: formData.password,
+          }),
+        });
+        const loginData = await loginRes.json();
+
+        if (loginRes.ok && loginData.token && loginData.user?._id) {
+          localStorage.setItem("token", loginData.token);
+          localStorage.setItem("user", JSON.stringify(loginData.user));
+          console.log("Auto-login success. Stored user:", loginData.user);
+        } else {
+          // Auto-login failed — store minimal user without _id (profile edit will be unavailable)
+          const fallbackUser = {
+            name: displayName,
+            role: formData.role,
+            email: formData.email || "",
+            phone: formData.contactNumber || "",
+            address: formData.address || "",
+            profileImage: ""
+          };
+          localStorage.setItem("user", JSON.stringify(fallbackUser));
+          console.warn("Auto-login after registration failed. Profile editing may not work until re-login.");
+        }
+
+        const role = formData.role;
+        if (role === "admin") navigate("/admin");
+        else if (role === "technician" || role === "technitian") navigate("/technitian");
+        else if (role === "student") navigate("/student");
+        else if (role === "rider") navigate("/rider");
+        else navigate("/dashboard");
+
+      } catch (err) {
+        setError("Could not connect to server. Please try again.");
+      }
+    } else {
+      // Login flow
       if (!formData.role) {
         setError("Please select your platform role to login.");
         return;
       }
-      
-      const role = formData.role;
-      if (role === "admin" || (formData.username && formData.username.toLowerCase().includes("admin"))) {
-        navigate("/admin");
-      } else if (role === "technician") {
-        navigate("/technitian");
-      } else if (role === "student") {
-        navigate("/student");
-      } else if (role === "rider") {
-        navigate("/rider");
-      } else {
-        navigate("/dashboard");
+
+      try {
+        // Try both username and email for login (backend expects username or email)
+        const loginPayload = formData.email ? { email: formData.email, password: formData.password } : { username: formData.username, password: formData.password };
+        const res = await fetch("http://localhost:5000/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(loginPayload)
+        });
+        const data = await res.json();
+        console.log("LOGIN RESPONSE:", data);
+        if (!res.ok) {
+          setError(data.message || "Login failed. Please check your credentials.");
+          return;
+        }
+        // Defensive: prefer _id from backend, fallback to id
+        const userObj = data.user || {};
+        if (!userObj._id && userObj.id) userObj._id = userObj.id;
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(userObj));
+        console.log("Stored user:", JSON.parse(localStorage.getItem("user")));
+        const role = userObj?.role || formData.role;
+        if (role === "admin") navigate("/admin");
+        else if (role === "technitian" || role === "technician") navigate("/technitian");
+        else if (role === "student") navigate("/student");
+        else if (role === "rider") navigate("/rider");
+        else navigate("/dashboard");
+      } catch (err) {
+        setError("Could not connect to the server. Please ensure the backend is running.");
       }
     }
   };
@@ -149,7 +208,7 @@ const AuthPage = ({ mode = "login" }) => {
                   name="hasVehicle"
                   checked={formData.hasVehicle}
                   onChange={handleChange}
-                  className="w-5 h-5 rounded border-gray-300 text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
+                  className="w-5 h-5 rounded border-gray-300 text-(--color-accent) focus:ring-(--color-accent)"
                 />
                 <span className="font-bold text-[#39413d]">I have a vehicle for campus rides</span>
               </label>
@@ -195,6 +254,10 @@ const AuthPage = ({ mode = "login" }) => {
               <input id="name" name="name" type="text" required value={formData.name} onChange={handleChange} placeholder="John Builder" />
             </div>
             <div className="auth-field">
+              <span>Email Address</span>
+              <input id="email" name="email" type="email" required value={formData.email} onChange={handleChange} placeholder="tech@university.edu" />
+            </div>
+            <div className="auth-field">
               <span>Work Type / Specialization</span>
               <select id="workType" name="workType" required value={formData.workType} onChange={handleChange}>
                 <option value="" disabled>Select Specialization...</option>
@@ -202,7 +265,7 @@ const AuthPage = ({ mode = "login" }) => {
                 <option value="plumbing">Plumbing</option>
                 <option value="carpentry">Carpentry</option>
                 <option value="it_support">IT / Network Support</option>
-                <option value="cleaning">Cleaning & Janitorial</option>
+                <option value="cleaning">Cleaning &amp; Janitorial</option>
                 <option value="hvac">HVAC / AC Maintenance</option>
                 <option value="other">Other Maintenance</option>
               </select>
@@ -267,6 +330,8 @@ const AuthPage = ({ mode = "login" }) => {
     }
   };
 
+  // Fix: define actionItems to avoid ReferenceError
+  const actionItems = [];
   return (
     <div className="auth-page">
       <Header navItems={[]} actionItems={actionItems} brandHref="/" />
@@ -283,21 +348,21 @@ const AuthPage = ({ mode = "login" }) => {
 
             <div className="auth-signal-list">
               <div className="auth-signal-row">
-                <FaCheckCircle className="text-[var(--color-accent)] mt-1 text-xl flex-shrink-0" />
+                <FaCheckCircle className="text-(--color-accent) mt-1 text-xl shrink-0" />
                 <div>
                   <p><strong>University-verified access</strong></p>
                   <p><small className="text-white/60">Strictly double opt-in trusted platform</small></p>
                 </div>
               </div>
               <div className="auth-signal-row">
-                <FaUserShield className="text-[var(--color-accent)] mt-1 text-xl flex-shrink-0" />
+                <FaUserShield className="text-(--color-accent) mt-1 text-xl shrink-0" />
                 <div>
                   <p><strong>Safer student community</strong></p>
                   <p><small className="text-white/60">Find compatible roommates securely</small></p>
                 </div>
               </div>
               <div className="auth-signal-row">
-                <FaLock className="text-[var(--color-accent)] mt-1 text-xl flex-shrink-0" />
+                <FaLock className="text-(--color-accent) mt-1 text-xl shrink-0" />
                 <div>
                   <p><strong>Live route tracking & privacy</strong></p>
                   <p><small className="text-white/60">Shared campus rides with 256-bit SSL</small></p>
@@ -338,7 +403,7 @@ const AuthPage = ({ mode = "login" }) => {
                         });
                         setError("");
                       }}
-                      className="border-2 border-[var(--color-accent)] shadow-sm bg-[var(--color-accent)]/5"
+                      className="border-2 border-(--color-accent) shadow-sm bg-(--color-accent)/5"
                     >
                       <option value="" disabled>Choose your role...</option>
                       <option value="student">🎓 Student</option>
@@ -365,7 +430,7 @@ const AuthPage = ({ mode = "login" }) => {
                         setFormData({ ...formData, role: newRole });
                         setError("");
                       }}
-                      className="border-2 border-[var(--color-accent)] shadow-sm bg-[var(--color-accent)]/5"
+                      className="border-2 border-(--color-accent) shadow-sm bg-(--color-accent)/5"
                     >
                       <option value="" disabled>Choose your role...</option>
                       <option value="student">🎓 Student</option>

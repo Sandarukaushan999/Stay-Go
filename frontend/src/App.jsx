@@ -1,13 +1,14 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import AuthPage from './Components/auth-page';
-import StudentDashboard from './Components/StudentDashboard';
-import TechnicianDashboard from './Components/TechnicianDashboard';
-import RiderDashboard from './Components/RiderDashboard';
-import AdminDashboard from './Components/AdminDashboard';
+import AuthPage from './Components/userMngmnt&AdminDshbrd/auth-page';
+import StudentDashboard from './Components/userMngmnt&AdminDshbrd/StudentDashboard';
+import TechnicianDashboard from './Components/userMngmnt&AdminDshbrd/TechnicianDashboard';
+import RiderDashboard from './Components/userMngmnt&AdminDshbrd/RiderDashboard';
+import AdminDashboard from './Components/userMngmnt&AdminDshbrd/AdminDashboard';
 import AdminProfile from './pages/AdminProfile';
+import AdminSettings from './pages/AdminSettings';
 import MainLayout from './layouts/MainLayout';
-import Home from './Components/home';
-import InfoPage from './Components/info-page';
+import Home from './Components/userMngmnt&AdminDshbrd/home';
+import InfoPage from './Components/userMngmnt&AdminDshbrd/info-page';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
       <Route path="/admin" element={<MainLayout />}>
         <Route index element={<AdminDashboard />} />
         <Route path="profile" element={<AdminProfile />} />
+        <Route path="settings" element={<AdminSettings />} />
       </Route>
       <Route path="/info" element={<InfoPage />} />
       <Route path="*" element={<Navigate to="/" />} />

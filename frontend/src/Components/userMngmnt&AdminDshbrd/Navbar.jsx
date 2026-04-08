@@ -1,9 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 function Navbar() {
   const navigate = useNavigate();
+  const [user, setUser] = useState({ name: "Admin User", role: "StayGo Admin" });
+
+  useEffect(() => {
+    try {
+      const savedUser = localStorage.getItem("user");
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        let displayRole = "User";
+        let path = "/admin"; // default
+        if (parsed.role === 'admin') { displayRole = "StayGo Admin"; path = "/admin"; }
+        else if (parsed.role === 'student') { displayRole = "Student"; path = "/student"; }
+        else if (parsed.role === 'rider') { displayRole = "Rider"; path = "/rider"; }
+        else if (parsed.role === 'technician' || parsed.role === 'technitian') { displayRole = "Technician"; path = "/technitian"; }
+        else { displayRole = parsed.role || "User"; path = "/"; }
+
+        setUser({
+          name: parsed.name || "User",
+          role: displayRole,
+          dashboardPath: path,
+          profileImage: parsed.profileImage || parsed.image
+        });
+      }
+    } catch (error) {
+      console.error("Failed to parse user from local storage", error);
+    }
+  }, []);
 
   return (
     <motion.header
@@ -15,7 +41,7 @@ function Navbar() {
       <div className="flex items-center gap-4 flex-1">
         <button
           className="font-bold text-xl text-gray-900 hover:text-[#BAF91A] transition focus:outline-none"
-          onClick={() => navigate("/admin")}
+          onClick={() => navigate(user.dashboardPath || "/admin")}
           type="button"
         >
           Dashboard
@@ -38,16 +64,25 @@ function Navbar() {
           whileTap={{ scale: 0.98 }}
           onClick={() => navigate("/admin/profile")}
         >
-          <img
-            src="https://randomuser.me/api/portraits/men/32.jpg"
-            alt="Admin User"
-            className="w-9 h-9 rounded-full object-cover border border-gray-200"
-          />
+          {user.profileImage ? (
+            <img
+              src={user.profileImage}
+              alt={user.name}
+              className="w-9 h-9 rounded-full object-cover border border-gray-200"
+            />
+          ) : (
+            <img
+              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || "User")}`}
+              alt="Avatar"
+              className="w-9 h-9 rounded-full object-cover border border-gray-200"
+            />
+          )}
           <div className="hidden md:flex flex-col">
-            <span className="text-sm font-bold text-gray-900 leading-tight">Admin User</span>
-            <span className="text-[10px] text-gray-400 font-medium tracking-wide text-left">StayGo Admin</span>
+            <span className="text-sm font-bold text-gray-900 leading-tight capitalize">{user.name}</span>
+            <span className="text-[10px] text-gray-400 font-medium tracking-wide text-left">{user.role}</span>
           </div>
         </motion.button>
+
 
         {/* Mobile Menu */}
         <button className="md:hidden p-2 rounded-full hover:bg-white border border-transparent hover:border-gray-200 transition text-gray-700">
