@@ -1,15 +1,9 @@
 import { useEffect, useState } from 'react'
-import AuthPage from './Components/auth-page'
 import Home from './Components/home'
 import InfoPage from './Components/info-page'
-import RideSharing from './Components/ride&sharing'
+import RideSharingModule from './Components/Ride_and_sharing'
 import MaintenanceDashboard from './Components/maintenance/MaintenanceDashboard'
 
-// ============================================
-// HASH TO SCREEN MAPPING
-// This maps URL hash values to screen names
-// When user visits #home, the app shows the 'home' screen
-// ============================================
 const hashToScreen = {
   '#home': 'home',
   '#ride-sharing': 'ride',
@@ -22,7 +16,6 @@ const hashToScreen = {
   '#register': 'register',
 }
 
-// Reverse mapping - screen name to URL hash
 const screenToHash = {
   home: '#home',
   ride: '#ride-sharing',
@@ -35,25 +28,16 @@ const screenToHash = {
   register: '#register',
 }
 
-// ============================================
-// PRIMARY NAVIGATION ITEMS
-// These are the main navigation links shown in the header
-// ============================================
 function buildPrimaryNavItems(navigateTo) {
   return [
-    { label: 'Home', type: 'link', href: '#home' },
-    { label: 'Roommates', type: 'link', href: '#roommates' },
+    { label: 'Home', type: 'button', onClick: () => navigateTo('home') },
+    { label: 'Roommates', type: 'button', onClick: () => navigateTo('home', 'roommates') },
     { label: 'Rides', type: 'button', onClick: () => navigateTo('ride') },
     { label: 'Maintenance', type: 'button', onClick: () => navigateTo('maintenance') },
-    { label: 'Dashboard', type: 'link', href: '#dashboard' },
+    { label: 'Dashboard', type: 'button', onClick: () => navigateTo('home', 'dashboard') },
   ]
 }
 
-// ============================================
-// PAGE CATALOG
-// Static content for info pages (privacy, terms, support, contact)
-// Each page uses the same InfoPage component with different data
-// ============================================
 const pageCatalog = {
   privacy: {
     id: 'privacy',
@@ -193,21 +177,13 @@ const pageCatalog = {
   },
 }
 
-// Get the screen name from the URL hash, default to 'home'
 function getScreenFromHash(hash) {
   return hashToScreen[hash] ?? 'home'
 }
 
-// ============================================
-// MAIN APP COMPONENT
-// This is the root component that controls which page to show
-// Uses hash-based routing (#home, #ride-sharing, #maintenance, etc.)
-// ============================================
 function App() {
-  // Track which screen is currently active
   const [screen, setScreen] = useState(() => getScreenFromHash(window.location.hash))
 
-  // Listen for hash changes in the URL (when user clicks browser back/forward)
   useEffect(() => {
     function handleHashChange() {
       setScreen(getScreenFromHash(window.location.hash))
@@ -220,30 +196,46 @@ function App() {
     }
   }, [])
 
-  // Navigate to a different screen - updates URL hash and scrolls to top
-  function navigateTo(nextScreen) {
+  function navigateTo(nextScreen, sectionId = null) {
     const nextHash = screenToHash[nextScreen] ?? '#home'
 
     if (window.location.hash !== nextHash) {
-      window.location.hash = nextHash
+      window.history.replaceState(null, '', nextHash)
     }
 
     setScreen(nextScreen)
+
+    if (nextScreen !== 'home') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
+    if (sectionId) {
+      requestAnimationFrame(() => {
+        const target = document.getElementById(sectionId)
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          return
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      })
+      return
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // Build navigation items with the navigateTo function
   const primaryNavItems = buildPrimaryNavItems(navigateTo)
 
-  // ---- RENDER: Show the Ride Sharing page ----
-  if (screen === 'ride') {
-    return (
-      <RideSharing
-        headerNavItems={primaryNavItems}
-        onNavigateHome={() => navigateTo('home')}
-        onNavigateToPage={navigateTo}
-      />
-    )
+  // ---- RENDER: Ride sharing module handles ride, login, and register screens ----
+  if (screen === 'ride' || screen === 'login' || screen === 'register') {
+    const initialPathByScreen = {
+      ride: '/login',
+      login: '/login',
+      register: '/rider/register',
+    }
+
+    return <RideSharingModule key={screen} initialPath={initialPathByScreen[screen] ?? '/'} />
   }
 
   // ---- RENDER: Show the Maintenance Dashboard ----
@@ -266,20 +258,6 @@ function App() {
         onNavigateHome={() => navigateTo('home')}
         onNavigateToRide={() => navigateTo('ride')}
         onNavigateToPage={navigateTo}
-      />
-    )
-  }
-
-  // ---- RENDER: Show login or register page ----
-  if (screen === 'login' || screen === 'register') {
-    return (
-      <AuthPage
-        mode={screen}
-        headerNavItems={primaryNavItems}
-        onNavigateHome={() => navigateTo('home')}
-        onNavigateToRide={() => navigateTo('ride')}
-        onNavigateToPage={navigateTo}
-        onNavigateToAuth={navigateTo}
       />
     )
   }
