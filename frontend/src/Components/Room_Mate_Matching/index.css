@@ -1,0 +1,685 @@
+.roommate-module,
+.roommate-module *,
+.roommate-module *::before,
+.roommate-module *::after {
+  box-sizing: border-box;
+}
+
+.roommate-module {
+  --rm-white: #ffffff;
+  --rm-dark: #101312;
+  --rm-accent: #baf91a;
+  --rm-accent-soft: #e2ff99;
+  --rm-violet: #876dff;
+  --rm-text: #101312;
+  --rm-muted: #55635d;
+  --rm-border: rgba(16, 19, 18, 0.1);
+  --rm-border-strong: rgba(16, 19, 18, 0.16);
+  --rm-surface: rgba(255, 255, 255, 0.8);
+  --rm-surface-strong: #ffffff;
+  --rm-surface-soft: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(249, 252, 242, 0.96) 100%);
+  --rm-dark-surface: linear-gradient(180deg, rgba(16, 19, 18, 0.98) 0%, rgba(25, 31, 29, 0.98) 100%);
+  --rm-violet-soft: rgba(135, 109, 255, 0.14);
+  --rm-violet-soft-strong: rgba(135, 109, 255, 0.22);
+  --rm-accent-soft-bg: rgba(186, 249, 26, 0.18);
+  --rm-accent-soft-bg-strong: rgba(226, 255, 153, 0.56);
+  --rm-shadow-soft: 0 16px 40px rgba(16, 19, 18, 0.08);
+  --rm-shadow-card: 0 18px 48px rgba(16, 19, 18, 0.1);
+  --rm-shadow-floating: 0 22px 60px rgba(16, 19, 18, 0.14);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--rm-text);
+  line-height: 1.6;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(226, 255, 153, 0.82), transparent 22%),
+    radial-gradient(circle at top right, rgba(135, 109, 255, 0.14), transparent 20%),
+    linear-gradient(180deg, #f9fbf5 0%, #ffffff 42%, #f4f8ee 100%);
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+}
+
+.roommate-module a {
+  color: var(--rm-violet);
+  text-decoration: none;
+}
+
+.roommate-module a:hover {
+  text-decoration: underline;
+}
+
+.roommate-module-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 28px 0;
+}
+
+.roommate-module-hint {
+  color: var(--rm-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.roommate-module-exit {
+  border: 1px solid var(--rm-border);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--rm-text);
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--rm-shadow-soft);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.roommate-module-exit:hover {
+  transform: translateY(-1px);
+  border-color: rgba(135, 109, 255, 0.26);
+  box-shadow: 0 18px 32px rgba(16, 19, 18, 0.12);
+}
+
+.roommate-module .page {
+  max-width: 940px;
+}
+
+.roommate-module .page-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+  color: var(--rm-text);
+}
+
+.roommate-module .page-subtitle {
+  color: var(--rm-muted);
+  margin-bottom: 20px;
+}
+
+.roommate-module .page-loading,
+.roommate-module .page-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--rm-muted);
+}
+
+.roommate-module .page-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.roommate-module .section-title {
+  font-size: 1.08rem;
+  margin: 26px 0 12px;
+  color: var(--rm-text);
+}
+
+.roommate-module .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.roommate-module .btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.roommate-module .btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.roommate-module .btn-primary {
+  background: var(--rm-accent);
+  color: var(--rm-dark);
+  box-shadow: 0 14px 28px rgba(186, 249, 26, 0.26);
+}
+
+.roommate-module .btn-primary:hover:not(:disabled) {
+  background: var(--rm-accent-soft);
+}
+
+.roommate-module .btn-success {
+  background: var(--rm-dark);
+  color: var(--rm-white);
+  box-shadow: 0 14px 28px rgba(16, 19, 18, 0.18);
+}
+
+.roommate-module .btn-success:hover:not(:disabled) {
+  background: #1b201f;
+}
+
+.roommate-module .btn-danger {
+  background: var(--rm-violet);
+  color: var(--rm-white);
+  box-shadow: 0 14px 28px rgba(135, 109, 255, 0.24);
+}
+
+.roommate-module .btn-danger:hover:not(:disabled) {
+  background: #7658f5;
+}
+
+.roommate-module .btn-outline {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--rm-border);
+  color: var(--rm-text);
+}
+
+.roommate-module .btn-outline:hover:not(:disabled) {
+  background: rgba(226, 255, 153, 0.28);
+  border-color: rgba(186, 249, 26, 0.5);
+}
+
+.roommate-module .btn-sm {
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  border-radius: 10px;
+}
+
+.roommate-module .form-card,
+.roommate-module .match-card,
+.roommate-module .request-card,
+.roommate-module .result-card,
+.roommate-module .issue-card,
+.roommate-module .notification-card,
+.roommate-module .admin-table,
+.roommate-module .dash-card,
+.roommate-module .dash-pair-summary,
+.roommate-module .empty-state,
+.roommate-module .modal-card {
+  background: var(--rm-surface-soft);
+  border: 1px solid var(--rm-border);
+  box-shadow: var(--rm-shadow-card);
+}
+
+.roommate-module .form-card {
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.roommate-module .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.roommate-module .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.roommate-module .form-group.full {
+  grid-column: 1 / -1;
+}
+
+.roommate-module .form-group label,
+.roommate-module .setup-label {
+  font-weight: 700;
+  font-size: 0.84rem;
+  color: var(--rm-text);
+}
+
+.roommate-module .form-group input,
+.roommate-module .form-group select,
+.roommate-module .form-group textarea,
+.roommate-module .modal-card select,
+.roommate-module .modal-card input,
+.roommate-module .setup-input,
+.roommate-module .topbar-id-input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid rgba(16, 19, 18, 0.14);
+  border-radius: 12px;
+  font-size: 0.92rem;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--rm-text);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.roommate-module .form-group input:focus,
+.roommate-module .form-group select:focus,
+.roommate-module .form-group textarea:focus,
+.roommate-module .modal-card select:focus,
+.roommate-module .modal-card input:focus,
+.roommate-module .setup-input:focus,
+.roommate-module .topbar-id-input:focus {
+  outline: none;
+  border-color: rgba(135, 109, 255, 0.44);
+  box-shadow: 0 0 0 4px rgba(135, 109, 255, 0.12);
+}
+
+.roommate-module .form-section-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--rm-text);
+  margin: 18px 0 8px;
+  grid-column: 1 / -1;
+}
+
+.roommate-module .form-actions,
+.roommate-module .modal-actions,
+.roommate-module .request-actions {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.roommate-module .range-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.roommate-module .range-group input[type='range'] {
+  flex: 1;
+  accent-color: var(--rm-violet);
+}
+
+.roommate-module .range-value,
+.roommate-module .result-score,
+.roommate-module .dash-big-number {
+  font-weight: 800;
+  color: var(--rm-violet);
+}
+
+.roommate-module .range-value {
+  font-size: 1.05rem;
+  min-width: 24px;
+}
+
+.roommate-module .alert {
+  padding: 14px 18px;
+  border-radius: 14px;
+  font-size: 0.92rem;
+  margin-bottom: 16px;
+}
+
+.roommate-module .alert-warning {
+  background: rgba(226, 255, 153, 0.72);
+  color: var(--rm-dark);
+  border: 1px solid rgba(186, 249, 26, 0.5);
+}
+
+.roommate-module .alert-info {
+  background: var(--rm-violet-soft);
+  color: var(--rm-text);
+  border: 1px solid rgba(135, 109, 255, 0.26);
+}
+
+.roommate-module .badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.roommate-module .badge-success {
+  background: var(--rm-accent-soft-bg);
+  color: var(--rm-dark);
+}
+
+.roommate-module .badge-warning {
+  background: rgba(226, 255, 153, 0.82);
+  color: var(--rm-dark);
+}
+
+.roommate-module .badge-danger,
+.roommate-module .badge-info {
+  background: var(--rm-violet-soft);
+  color: var(--rm-violet);
+}
+
+.roommate-module .tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 22px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(16, 19, 18, 0.08);
+}
+
+.roommate-module .tab {
+  padding: 10px 18px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--rm-muted);
+  border-radius: 999px;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.roommate-module .tab:hover {
+  color: var(--rm-text);
+  background: rgba(226, 255, 153, 0.25);
+}
+
+.roommate-module .tab.active {
+  color: var(--rm-dark);
+  background: var(--rm-accent-soft-bg-strong);
+}
+
+.roommate-module .empty-state {
+  text-align: center;
+  padding: 40px;
+  border-style: dashed;
+  border-radius: 18px;
+}
+
+.roommate-module .empty-state p {
+  margin: 4px 0;
+}
+
+.roommate-module .text-muted,
+.roommate-module .page-loading,
+.roommate-module .page-empty,
+.roommate-module .match-detail span,
+.roommate-module .result-detail span,
+.roommate-module .issue-meta,
+.roommate-module .notification-time {
+  color: var(--rm-muted);
+}
+
+.roommate-module .match-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+.roommate-module .match-card {
+  border-radius: 20px;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.roommate-module .match-card:hover,
+.roommate-module .notification-card:hover,
+.roommate-module .dash-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 50px rgba(16, 19, 18, 0.14);
+}
+
+.roommate-module .match-card-header,
+.roommate-module .issue-header,
+.roommate-module .notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.roommate-module .match-card-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(16, 19, 18, 0.06);
+}
+
+.roommate-module .match-card-header h3,
+.roommate-module .issue-header h4,
+.roommate-module .notification-header h4,
+.roommate-module .result-card h2,
+.roommate-module .dash-pair-summary h3 {
+  margin: 0;
+  color: var(--rm-text);
+}
+
+.roommate-module .match-score,
+.roommate-module .result-badge {
+  background: rgba(186, 249, 26, 0.22);
+  color: var(--rm-dark);
+  font-weight: 800;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+}
+
+.roommate-module .match-card-body {
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.roommate-module .match-detail,
+.roommate-module .result-detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.88rem;
+}
+
+.roommate-module .match-card-actions {
+  padding: 16px 20px 20px;
+  border-top: 1px solid rgba(16, 19, 18, 0.06);
+}
+
+.roommate-module .request-list,
+.roommate-module .issue-list,
+.roommate-module .notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.roommate-module .request-card,
+.roommate-module .issue-card,
+.roommate-module .notification-card {
+  border-radius: 18px;
+  padding: 18px 20px;
+}
+
+.roommate-module .request-card {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.roommate-module .request-info h4,
+.roommate-module .result-whatsapp h4,
+.roommate-module .result-room h4 {
+  margin: 0 0 6px;
+  color: var(--rm-text);
+}
+
+.roommate-module .request-info p,
+.roommate-module .issue-desc,
+.roommate-module .notification-card p,
+.roommate-module .setup-subtitle,
+.roommate-module .setup-note,
+.roommate-module .page-subtitle {
+  margin: 0;
+  color: var(--rm-muted);
+}
+
+.roommate-module .result-card {
+  border-radius: 24px;
+  padding: 32px;
+  max-width: 660px;
+}
+
+.roommate-module .result-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.roommate-module .result-detail {
+  background: rgba(255, 255, 255, 0.76);
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(16, 19, 18, 0.06);
+}
+
+.roommate-module .result-whatsapp,
+.roommate-module .result-room,
+.roommate-module .result-note,
+.roommate-module .dash-next-step,
+.roommate-module .issue-admin-comment {
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.roommate-module .result-whatsapp {
+  background: rgba(186, 249, 26, 0.16);
+  border: 1px solid rgba(186, 249, 26, 0.4);
+  margin-bottom: 16px;
+}
+
+.roommate-module .whatsapp-number {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--rm-dark);
+}
+
+.roommate-module .result-room,
+.roommate-module .dash-next-step {
+  background: var(--rm-violet-soft);
+  border: 1px solid rgba(135, 109, 255, 0.22);
+  margin-bottom: 16px;
+}
+
+.roommate-module .result-note {
+  background: rgba(226, 255, 153, 0.7);
+  border: 1px solid rgba(186, 249, 26, 0.42);
+  font-size: 0.92rem;
+  color: var(--rm-dark);
+}
+
+.roommate-module .issue-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.roommate-module .issue-admin-comment {
+  margin-top: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 0.88rem;
+  border: 1px solid rgba(16, 19, 18, 0.08);
+}
+
+.roommate-module .notification-card.unread {
+  border-left: 4px solid var(--rm-violet);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(135, 109, 255, 0.08));
+}
+
+.roommate-module .admin-table-wrapper {
+  overflow-x: auto;
+  border-radius: 20px;
+}
+
+.roommate-module .admin-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+.roommate-module .admin-table th {
+  text-align: left;
+  padding: 13px 14px;
+  background: rgba(226, 255, 153, 0.4);
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: var(--rm-text);
+  border-bottom: 1px solid rgba(16, 19, 18, 0.08);
+}
+
+.roommate-module .admin-table td {
+  padding: 13px 14px;
+  border-bottom: 1px solid rgba(16, 19, 18, 0.06);
+  font-size: 0.9rem;
+  color: var(--rm-text);
+}
+
+.roommate-module .admin-table tbody tr:hover {
+  background: rgba(226, 255, 153, 0.12);
+}
+
+.roommate-module .modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 19, 18, 0.28);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 24px;
+}
+
+.roommate-module .modal-card {
+  border-radius: 22px;
+  padding: 28px;
+  min-width: 380px;
+  max-width: min(90vw, 720px);
+  box-shadow: var(--rm-shadow-floating);
+}
+
+.roommate-module .modal-card h3 {
+  margin: 0 0 16px;
+}
+
+.roommate-module .modal-large {
+  min-width: min(92vw, 560px);
+}
+
+@media (max-width: 992px) {
+  .roommate-module-toolbar {
+    padding: 16px 18px 0;
+  }
+
+  .roommate-module .page-header-row,
+  .roommate-module .request-card,
+  .roommate-module .issue-header,
+  .roommate-module .notification-header,
+  .roommate-module .match-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .roommate-module .form-grid,
+  .roommate-module .match-card-body,
+  .roommate-module .result-details {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .roommate-module-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .roommate-module .btn,
+  .roommate-module .btn-sm {
+    width: 100%;
+  }
+
+  .roommate-module .tabs {
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+
+  .roommate-module .modal-card {
+    min-width: 100%;
+    padding: 22px;
+  }
+}

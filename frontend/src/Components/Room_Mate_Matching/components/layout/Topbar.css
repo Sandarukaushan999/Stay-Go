@@ -1,0 +1,121 @@
+.roommate-module .topbar {
+  min-height: 64px;
+  background: rgba(255, 255, 255, 0.84);
+  border-bottom: 1px solid rgba(16, 19, 18, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(18px);
+}
+
+.roommate-module .topbar-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--rm-text);
+}
+
+.roommate-module .topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.roommate-module .topbar-bell {
+  position: relative;
+  background: rgba(135, 109, 255, 0.1);
+  border: 1px solid rgba(135, 109, 255, 0.18);
+  font-size: 1.1rem;
+  color: var(--rm-violet);
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 14px;
+  transition: transform 0.16s ease, background-color 0.16s ease;
+}
+
+.roommate-module .topbar-bell:hover {
+  transform: translateY(-1px);
+  background: rgba(135, 109, 255, 0.16);
+}
+
+.roommate-module .topbar-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--rm-accent);
+  color: var(--rm-dark);
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 999px;
+  min-width: 18px;
+  text-align: center;
+  box-shadow: 0 8px 16px rgba(186, 249, 26, 0.28);
+}
+
+.roommate-module .topbar-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.roommate-module .topbar-role-badge {
+  background: rgba(226, 255, 153, 0.72);
+  color: var(--rm-dark);
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: 999px;
+  text-transform: capitalize;
+}
+
+.roommate-module .topbar-switch-btn {
+  font-size: 0.82rem;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid var(--rm-border);
+  padding: 8px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--rm-text);
+  font-weight: 700;
+}
+
+.roommate-module .topbar-switch-btn:hover {
+  background: rgba(226, 255, 153, 0.26);
+}
+
+.roommate-module .topbar-id-panel {
+  position: absolute;
+  top: 70px;
+  right: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(16, 19, 18, 0.08);
+  border-radius: 18px;
+  padding: 14px;
+  display: flex;
+  gap: 8px;
+  box-shadow: var(--rm-shadow-floating);
+  z-index: 200;
+  min-width: min(560px, calc(100vw - 32px));
+}
+
+@media (max-width: 720px) {
+  .roommate-module .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px 18px;
+  }
+
+  .roommate-module .topbar-id-panel {
+    position: static;
+    margin-top: 10px;
+    width: 100%;
+    min-width: 100%;
+    flex-direction: column;
+  }
+}

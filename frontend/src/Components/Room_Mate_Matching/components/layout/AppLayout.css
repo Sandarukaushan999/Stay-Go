@@ -1,0 +1,29 @@
+.roommate-module .app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.roommate-module .app-main {
+  flex: 1;
+  margin-left: 240px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: transparent;
+}
+
+.roommate-module .app-content {
+  flex: 1;
+  padding: 30px 32px 40px;
+  max-width: 1140px;
+}
+
+@media (max-width: 992px) {
+  .roommate-module .app-main {
+    margin-left: 0;
+  }
+
+  .roommate-module .app-content {
+    padding: 20px 18px 32px;
+  }
+}

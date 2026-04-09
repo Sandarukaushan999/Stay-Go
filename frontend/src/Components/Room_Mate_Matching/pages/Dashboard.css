@@ -1,0 +1,53 @@
+.roommate-module .dashboard {
+  max-width: 840px;
+}
+
+.roommate-module .dash-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.roommate-module .dash-card {
+  border-radius: 20px;
+  padding: 22px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.roommate-module .dash-card h3 {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  color: var(--rm-muted);
+}
+
+.roommate-module .dash-card p {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--rm-text);
+}
+
+.roommate-module .dash-card.complete {
+  border-left: 4px solid var(--rm-accent);
+}
+
+.roommate-module .dash-card.incomplete {
+  border-left: 4px solid var(--rm-violet);
+}
+
+.roommate-module .dash-big-number {
+  font-size: 1.7rem;
+}
+
+.roommate-module .dash-pair-summary {
+  border-radius: 20px;
+  padding: 22px;
+  margin-bottom: 16px;
+}
+
+.roommate-module .dash-next-step p {
+  margin: 0 0 12px;
+  color: var(--rm-text);
+  font-weight: 600;
+}

@@ -1,0 +1,94 @@
+// ── Enums used across models, validators, and business logic ──
+
+const SLEEP_SCHEDULE = Object.freeze({
+    EARLY_BIRD: 'EARLY_BIRD',
+    NIGHT_OWL: 'NIGHT_OWL',
+});
+
+const SOCIAL_HABITS = Object.freeze({
+    QUIET: 'QUIET',
+    MODERATE: 'MODERATE',
+    SOCIAL: 'SOCIAL',
+});
+
+const STUDY_HABITS = Object.freeze({
+    SILENT: 'SILENT',
+    SOME_NOISE: 'SOME_NOISE',
+    ANY: 'ANY',
+});
+
+const AC_TYPE = Object.freeze({
+    AC: 'AC',
+    NON_AC: 'NON_AC',
+});
+
+const ROOM_POSITION = Object.freeze({
+    BALCONY: 'BALCONY',
+    MIDDLE: 'MIDDLE',
+});
+
+const AVAILABILITY_STATUS = Object.freeze({
+    AVAILABLE: 'AVAILABLE',
+    PARTIALLY_FILLED: 'PARTIALLY_FILLED',
+    FULL: 'FULL',
+    MAINTENANCE: 'MAINTENANCE',
+});
+
+const MATCH_REQUEST_STATUS = Object.freeze({
+    PENDING: 'PENDING',
+    ACCEPTED: 'ACCEPTED',
+    REJECTED: 'REJECTED',
+    CANCELLED: 'CANCELLED',
+});
+
+const NOTIFICATION_TYPE = Object.freeze({
+    MATCH_REQUEST_RECEIVED: 'MATCH_REQUEST_RECEIVED',
+    MATCH_REQUEST_ACCEPTED: 'MATCH_REQUEST_ACCEPTED',
+    MATCH_REQUEST_REJECTED: 'MATCH_REQUEST_REJECTED',
+    ROOMMATE_PAIR_LOCKED: 'ROOMMATE_PAIR_LOCKED',
+    ROOM_CHANGED: 'ROOM_CHANGED',
+    ISSUE_STATUS_UPDATED: 'ISSUE_STATUS_UPDATED',
+});
+
+const ISSUE_CATEGORY = Object.freeze({
+    FACILITIES: 'FACILITIES',
+    SAFETY: 'SAFETY',
+    ROOM_CONDITION: 'ROOM_CONDITION',
+    CLEANING: 'CLEANING',
+    ELECTRICITY: 'ELECTRICITY',
+    WATER: 'WATER',
+    OTHER: 'OTHER',
+});
+
+const ISSUE_PRIORITY = Object.freeze({
+    EMERGENCY: 'EMERGENCY',
+    HIGH: 'HIGH',
+    MEDIUM: 'MEDIUM',
+    LOW: 'LOW',
+});
+
+const ISSUE_STATUS = Object.freeze({
+    SUBMITTED: 'SUBMITTED',
+    IN_PROGRESS: 'IN_PROGRESS',
+    RESOLVED: 'RESOLVED',
+});
+
+const ROLES = Object.freeze({
+    STUDENT: 'student',
+    ADMIN: 'admin',
+});
+
+module.exports = {
+    SLEEP_SCHEDULE,
+    SOCIAL_HABITS,
+    STUDY_HABITS,
+    AC_TYPE,
+    ROOM_POSITION,
+    AVAILABILITY_STATUS,
+    MATCH_REQUEST_STATUS,
+    NOTIFICATION_TYPE,
+    ISSUE_CATEGORY,
+    ISSUE_PRIORITY,
+    ISSUE_STATUS,
+    ROLES,
+};

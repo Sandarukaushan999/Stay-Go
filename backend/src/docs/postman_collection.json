@@ -1,0 +1,696 @@
+{
+    "info": {
+        "name": "Stay & Go Backend API",
+        "description": "Complete API collection for the Stay & Go hostel roommate matching system.\n\nSetup:\n1. Set the `baseUrl` variable to http://localhost:5000\n2. Run `npm run seed` to populate the database\n3. Set `studentId` variable to a seeded student _id\n4. All requests use x-student-id and x-role headers for dev auth",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:5000"
+        },
+        {
+            "key": "studentId",
+            "value": "PASTE_STUDENT_ID_HERE"
+        },
+        {
+            "key": "studentId2",
+            "value": "PASTE_SECOND_STUDENT_ID_HERE"
+        },
+        {
+            "key": "requestId",
+            "value": "PASTE_REQUEST_ID_HERE"
+        },
+        {
+            "key": "roomId",
+            "value": "PASTE_ROOM_ID_HERE"
+        },
+        {
+            "key": "issueId",
+            "value": "PASTE_ISSUE_ID_HERE"
+        },
+        {
+            "key": "notificationId",
+            "value": "PASTE_NOTIFICATION_ID_HERE"
+        }
+    ],
+    "item": [
+        {
+            "name": "Health",
+            "item": [
+                {
+                    "name": "Health Check",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/health"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Student Profile",
+            "item": [
+                {
+                    "name": "Create Profile",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/students/profile",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"address\": \"123 Main St\",\n  \"email\": \"test.user@university.lk\",\n  \"whatsApp\": \"+94771111111\",\n  \"gender\": \"Male\",\n  \"age\": 21,\n  \"sleepSchedule\": \"EARLY_BIRD\",\n  \"cleanliness\": 4,\n  \"socialHabits\": \"MODERATE\",\n  \"studyHabits\": \"SILENT\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Get My Profile",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/students/profile/me"
+                    }
+                },
+                {
+                    "name": "Update My Profile",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/students/profile/me",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"cleanliness\": 5\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Get Student By ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/students/{{studentId2}}"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Room Preferences",
+            "item": [
+                {
+                    "name": "Create/Upsert Room Preference",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/room-preferences/me",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"block\": \"A\",\n  \"floor\": \"1\",\n  \"acType\": \"AC\",\n  \"roomPosition\": \"BALCONY\",\n  \"capacity\": 2\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Get My Room Preference",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/room-preferences/me"
+                    }
+                },
+                {
+                    "name": "Update Room Preference",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/room-preferences/me",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"block\": \"B\",\n  \"floor\": \"2\",\n  \"acType\": \"AC\",\n  \"roomPosition\": \"BALCONY\",\n  \"capacity\": 2\n}"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Rooms (Admin)",
+            "item": [
+                {
+                    "name": "List All Rooms",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/rooms"
+                    }
+                },
+                {
+                    "name": "List Available Rooms",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/rooms/available"
+                    }
+                },
+                {
+                    "name": "Create Room (Admin)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "admin"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/rooms",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"roomNumber\": \"D-101\",\n  \"block\": \"D\",\n  \"floor\": \"1\",\n  \"acType\": \"AC\",\n  \"roomPosition\": \"BALCONY\",\n  \"capacity\": 3\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Update Room (Admin)",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "admin"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/rooms/{{roomId}}",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"capacity\": 4\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Update Room Status (Admin)",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "admin"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/rooms/{{roomId}}/status",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"availabilityStatus\": \"MAINTENANCE\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Assign Student to Room (Admin)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "admin"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/rooms/{{roomId}}/assign-student/{{studentId2}}"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Matching",
+            "item": [
+                {
+                    "name": "Get Suggestions",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/matching/suggestions"
+                    }
+                },
+                {
+                    "name": "Send Match Request",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/matching/requests/{{studentId2}}"
+                    }
+                },
+                {
+                    "name": "Get Sent Requests",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/matching/requests/sent"
+                    }
+                },
+                {
+                    "name": "Get Received Requests",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/matching/requests/received"
+                    }
+                },
+                {
+                    "name": "Accept Request",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/matching/requests/{{requestId}}/accept"
+                    }
+                },
+                {
+                    "name": "Reject Request",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/matching/requests/{{requestId}}/reject"
+                    }
+                },
+                {
+                    "name": "Cancel Request",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/matching/requests/{{requestId}}/cancel"
+                    }
+                },
+                {
+                    "name": "Get My Pair",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/matching/pair/me"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Notifications",
+            "item": [
+                {
+                    "name": "Get My Notifications",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/notifications/me"
+                    }
+                },
+                {
+                    "name": "Mark Notification as Read",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/notifications/{{notificationId}}/read"
+                    }
+                },
+                {
+                    "name": "Mark All as Read",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/notifications/read-all"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Issues",
+            "item": [
+                {
+                    "name": "Create Issue",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/issues",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"AC not cooling\",\n  \"description\": \"The AC in my room is running but not cooling properly.\",\n  \"category\": \"FACILITIES\",\n  \"priority\": \"MEDIUM\",\n  \"roomNumber\": \"A-101\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Get My Issues",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/issues/me"
+                    }
+                },
+                {
+                    "name": "Get Issue By ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/issues/{{issueId}}"
+                    }
+                },
+                {
+                    "name": "Update Issue (Student)",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "student"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/issues/{{issueId}}",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"additionalNotes\": \"Issue is getting worse.\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Update Issue Status (Admin)",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "admin"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/issues/{{issueId}}/status",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Add Admin Comment",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "admin"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/issues/{{issueId}}/comment",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"adminComment\": \"Technician has been dispatched.\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "List All Issues (Admin)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-student-id",
+                                "value": "{{studentId}}"
+                            },
+                            {
+                                "key": "x-role",
+                                "value": "admin"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/api/admin/issues"
+                    }
+                }
+            ]
+        }
+    ]
+}
